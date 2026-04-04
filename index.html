@@ -254,6 +254,77 @@
     color: var(--ink3);
     line-height: 1.8;
   }
+
+  /* ── RESPONSIVE: TABLET & PC ── */
+  @media (min-width: 640px) {
+    header { padding: 36px 24px 30px; }
+    header h1 { font-size: 26px; }
+    header p { font-size: 14px; }
+
+    .filter-wrap { text-align: center; padding: 16px 24px; }
+    .filter-btn { font-size: 13px; padding: 8px 20px; }
+
+    .summary { max-width: 600px; margin: 0 auto; }
+    .sum-val { font-size: 16px; }
+
+    .cards {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    .card-img, .img-placeholder { height: 240px; }
+    .card-title { font-size: 18px; }
+    .price-val { font-size: 17px; }
+    .info-val { font-size: 13px; }
+    .note { font-size: 13px; }
+    .calc-row { font-size: 13px; }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+    }
+    .card:active { transform: none; }
+
+    /* 버스 대절 섹션 */
+    .bus-section {
+      max-width: 600px;
+      margin: 0 auto 16px;
+    }
+
+    footer { font-size: 12px; padding: 32px 24px; }
+  }
+
+  @media (min-width: 1024px) {
+    .cards {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 28px;
+      padding: 32px 40px;
+    }
+    .card-img, .img-placeholder { height: 260px; }
+  }
+
+  /* ── IMAGE PLACEHOLDER 개선 ── */
+  .img-placeholder {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    background: linear-gradient(135deg, #ede8e0 0%, #ddd5c8 100%);
+    color: var(--ink3);
+    position: relative;
+  }
+  .img-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.05) 100%);
+  }
 </style>
 </head>
 <body>
@@ -291,7 +362,7 @@
   <div class="card best" data-price="1367" data-ktx="5" data-parking="3000">
     <div class="best-banner">★ 가격 최우선 추천</div>
     <img class="card-img"
-         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/68f5eb94066ef258cf3b311e_1.avif"
+         src="https://dnna01d8m6k3w.cloudfront.net/partnerProfile/2207/202410/20241022/e4d8fa4e-0507-4293-bbfe-7a02cc64de96.jpg"
          alt="제이오스티엘 티파니홀"
          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <div class="img-placeholder" style="display:none">🏛️</div>
@@ -349,7 +420,11 @@
 
   <!-- ② SW 컨벤션센터 -->
   <div class="card" data-price="1390" data-ktx="4" data-parking="500">
-    <div class="img-placeholder">🏙️</div>
+    <img class="card-img"
+         src="https://dnna01d8m6k3w.cloudfront.net/partnerProfile/2163/202410/20241010/945004a7-0953-49a1-9a5e-9edeebcfb56c.png"
+         alt="SW 컨벤션센터 그랜드볼룸"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-placeholder" style="display:none">🏙️</div>
     <div class="card-body">
       <div class="card-head">
         <div>
@@ -415,7 +490,11 @@
 
   <!-- ③ 웨딩시티 신도림 -->
   <div class="card" data-price="2375" data-ktx="5" data-parking="2000">
-    <div class="img-placeholder" style="background: linear-gradient(135deg, #e8e2f8 0%, #d5cef0 100%)">🌸</div>
+    <img class="card-img"
+         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/69c25dc732ace8f1e25e17be_%EC%9B%A8%EB%94%A9%EC%8B%9C%ED%8B%B0%20%EC%8A%A4%ED%83%80%ED%8B%B0%EC%8A%A4%20%ED%99%80%EC%9D%B4%EB%AF%B8%EC%A7%8003.jpg"
+         alt="웨딩시티 신도림 스타티스홀"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-placeholder" style="display:none;background: linear-gradient(135deg, #e8e2f8 0%, #d5cef0 100%)">🌸</div>
     <div class="card-body">
       <div class="card-head">
         <div>
@@ -470,7 +549,7 @@
   <!-- ④ DMC 타워 웨딩 -->
   <div class="card" data-price="2134" data-ktx="5" data-parking="500">
     <img class="card-img"
-         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/68ec78027a168659ddbf02bb_%ED%8E%A0%EB%A6%AC%EC%B2%B4%ED%99%80.avif"
+         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/66f60cdffac1fc0d13ffda17_1339047902_img_6174_0_1726195665.avif"
          alt="DMC타워웨딩 펠리체홀"
          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <div class="img-placeholder" style="display:none">✨</div>
@@ -606,7 +685,7 @@
   <!-- ⑥ 아만티호텔 -->
   <div class="card" data-price="3160" data-ktx="4" data-parking="300">
     <img class="card-img"
-         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/66e002dd82b332f59d7740b3_image.avif"
+         src="https://dnna01d8m6k3w.cloudfront.net/partnerProfile/3506/202410/20241011/750423a6-9d0e-4cda-91a8-a30fd9e97bdd.jpg"
          alt="아만티호텔 웨딩홀"
          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <div class="img-placeholder" style="display:none">🕊️</div>
@@ -665,7 +744,7 @@
 
 <div class="section-divider" style="margin:8px 0"><span>버스 대절 참고</span></div>
 
-<div style="margin:0 16px 16px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:16px;">
+<div class="bus-section" style="margin:0 16px 16px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:16px;">
   <div style="font-size:13px;font-weight:500;margin-bottom:10px;">🚌 광주→서울 버스 대절 예상비용</div>
   <div class="info-grid">
     <div class="info-cell">
