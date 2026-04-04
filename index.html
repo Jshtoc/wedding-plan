@@ -255,6 +255,212 @@
     line-height: 1.8;
   }
 
+  /* ── TAB NAVIGATION ── */
+  .tab-nav {
+    display: flex;
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 76px;
+    z-index: 99;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 500;
+    color: var(--ink3);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    color: var(--ink);
+    border-bottom-color: var(--gold);
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── ROUTE TAB ── */
+  .route-wrap {
+    padding: 16px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .route-header {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .route-header h2 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .route-header p { font-size: 12px; color: var(--ink2); line-height: 1.6; }
+  .route-total {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .route-total-item { text-align: center; }
+  .route-total-item .sum-label { font-size: 10px; color: var(--ink3); margin-bottom: 2px; }
+  .route-total-item .sum-val { font-size: 15px; font-weight: 500; }
+
+  /* TIMELINE */
+  .timeline { position: relative; }
+  .tl-connector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 6px 22px;
+    position: relative;
+  }
+  .tl-connector::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .tl-drive {
+    background: var(--bg);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--ink3);
+    white-space: nowrap;
+  }
+  .tl-drive-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .tl-stop {
+    display: flex;
+    gap: 12px;
+    position: relative;
+  }
+  .tl-marker {
+    width: 30px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .tl-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .tl-dot.start { background: var(--green); }
+  .tl-dot.end { background: var(--ink3); }
+  .tl-line {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+    margin-top: 4px;
+  }
+
+  .tl-card {
+    flex: 1;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 14px;
+    margin: 8px 0;
+  }
+  .tl-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .tl-name {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .tl-price {
+    font-size: 13px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .tl-addr {
+    font-size: 12px;
+    color: var(--ink2);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .tl-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .tl-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: #f0ece7;
+    color: var(--ink2);
+  }
+
+  /* COPY BUTTON */
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:active { transform: scale(0.96); }
+  .copy-btn.copied {
+    background: var(--green-light);
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .tl-tip {
+    font-size: 11px;
+    color: var(--ink3);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
   /* ── RESPONSIVE: TABLET & PC ── */
   @media (min-width: 640px) {
     header { padding: 36px 24px 30px; }
@@ -295,6 +501,14 @@
       margin: 0 auto 16px;
     }
 
+    .tab-nav { top: 90px; }
+    .tab-btn { font-size: 14px; padding: 16px 8px; }
+    .route-wrap { padding: 24px; }
+    .route-header h2 { font-size: 20px; }
+    .tl-name { font-size: 17px; }
+    .tl-card { padding: 18px; }
+    .copy-btn { font-size: 13px; padding: 8px 16px; }
+
     footer { font-size: 12px; padding: 32px 24px; }
   }
 
@@ -333,6 +547,13 @@
   <h1>💍 웨딩홀 비교 리스트</h1>
   <p>신랑 100명 (광주) + 신부 80명 (서울) · 예산 1,000만원</p>
 </header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('list')">웨딩홀 리스트</button>
+  <button class="tab-btn" onclick="switchTab('route')">동선 (목동 출발)</button>
+</div>
+
+<div id="tab-list" class="tab-content active">
 
 <div class="filter-wrap">
   <button class="filter-btn active" onclick="sort('default')">기본 정렬</button>
@@ -769,6 +990,251 @@
   <div class="note" style="margin-top:8px">버스 대절이 KTX 단체 예약보다 약 500만원 이상 저렴. 어르신 하객분들 직행 이동 편의성도 높음. 견적 비교: allbus.kr / callbus.com</div>
 </div>
 
+</div><!-- /tab-list -->
+
+<div id="tab-route" class="tab-content">
+  <div class="route-wrap">
+
+    <div class="route-header">
+      <h2>목동 출발 웨딩홀 투어 동선</h2>
+      <p>6곳을 하루에 효율적으로 돌 수 있는 최적 경로입니다.<br>가까운 곳부터 루프를 그리며 이동합니다.</p>
+      <div class="route-total">
+        <div class="route-total-item">
+          <div class="sum-label">총 방문</div>
+          <div class="sum-val">6곳</div>
+        </div>
+        <div class="route-total-item">
+          <div class="sum-label">예상 이동시간</div>
+          <div class="sum-val">약 2시간</div>
+        </div>
+        <div class="route-total-item">
+          <div class="sum-label">총 거리</div>
+          <div class="sum-val">약 65km</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline">
+
+      <!-- START: 목동 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot start">출</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card" style="border-left:3px solid var(--green)">
+          <div class="tl-name">목동 (출발)</div>
+          <div class="tl-addr">서울 양천구 목동</div>
+          <div class="tl-tip">오전 10시 출발 권장 — 점심 전 3곳, 점심 후 3곳</div>
+        </div>
+      </div>
+
+      <!-- DRIVE -->
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 10분 · 3km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- STOP 1: 더뉴컨벤션 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot">1</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div class="tl-name">더뉴컨벤션 웨딩</div>
+            <div class="tl-price price-over">2,676만</div>
+          </div>
+          <div class="tl-addr">서울 강서구 강서로 385 (내발산동)</div>
+          <div class="tl-meta">
+            <span class="tl-tag">5호선 발산역 3분</span>
+            <span class="tl-tag">주차 600대</span>
+            <span class="tl-tag">르노브홀 / 더뉴홀</span>
+          </div>
+          <button class="copy-btn" onclick="copyAddr(this, '서울 강서구 강서로 385')">
+            📋 주소 복사
+          </button>
+          <div class="tl-tip">목동에서 가장 가까움. 발산역 바로 앞.</div>
+        </div>
+      </div>
+
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 15분 · 8km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- STOP 2: 웨딩시티 신도림 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot">2</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div class="tl-name">웨딩시티 신도림</div>
+            <div class="tl-price price-warn">2,375만</div>
+          </div>
+          <div class="tl-addr">서울 구로구 경인로 662 신도림테크노마트 8층</div>
+          <div class="tl-meta">
+            <span class="tl-tag">1·2호선 신도림역</span>
+            <span class="tl-tag">주차 2,000대</span>
+            <span class="tl-tag">토다이 뷔페</span>
+          </div>
+          <button class="copy-btn" onclick="copyAddr(this, '서울 구로구 경인로 662 신도림테크노마트')">
+            📋 주소 복사
+          </button>
+          <div class="tl-tip">테크노마트 건물 8층. 주차 넉넉.</div>
+        </div>
+      </div>
+
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 8분 · 3km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- STOP 3: 제이오스티엘 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot" style="background:var(--gold)">3</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card" style="border:2px solid var(--gold)">
+          <div style="background:var(--gold-light);color:var(--gold);font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:8px">★ 가격 1위 추천</div>
+          <div class="tl-card-head">
+            <div class="tl-name">제이오스티엘</div>
+            <div class="tl-price price-ok">1,367만</div>
+          </div>
+          <div class="tl-addr">서울 구로구 구로중앙로 152 (구로동)</div>
+          <div class="tl-meta">
+            <span class="tl-tag">1호선 구로역 2분</span>
+            <span class="tl-tag">주차 3,000대</span>
+            <span class="tl-tag">단독홀</span>
+          </div>
+          <button class="copy-btn" onclick="copyAddr(this, '서울 구로구 구로중앙로 152')">
+            📋 주소 복사
+          </button>
+          <div class="tl-tip">신도림에서 바로 옆. 같이 보기 좋은 위치.</div>
+        </div>
+      </div>
+
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 30분 · 16km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- STOP 4: SW 컨벤션센터 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot">4</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div class="tl-name">SW 컨벤션센터</div>
+            <div class="tl-price price-ok">1,390만</div>
+          </div>
+          <div class="tl-addr">서울 종로구 종로 300 (창신동)</div>
+          <div class="tl-meta">
+            <span class="tl-tag">1·6호선 동묘앞역 1분</span>
+            <span class="tl-tag">주차 500대</span>
+            <span class="tl-tag">11층 스카이뷰</span>
+          </div>
+          <button class="copy-btn" onclick="copyAddr(this, '서울 종로구 종로 300')">
+            📋 주소 복사
+          </button>
+          <div class="tl-tip">이동이 가장 긴 구간. 점심 후 이동 추천.</div>
+        </div>
+      </div>
+
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 25분 · 14km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- STOP 5: DMC 타워 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot">5</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div class="tl-name">DMC 타워 웨딩</div>
+            <div class="tl-price price-warn">2,134만</div>
+          </div>
+          <div class="tl-addr">서울 마포구 성암로 189 (상암동)</div>
+          <div class="tl-meta">
+            <span class="tl-tag">6호선·공항철도 DMC역</span>
+            <span class="tl-tag">주차 500대</span>
+            <span class="tl-tag">홀 3종</span>
+          </div>
+          <button class="copy-btn" onclick="copyAddr(this, '서울 마포구 성암로 189')">
+            📋 주소 복사
+          </button>
+          <div class="tl-tip">동묘앞에서 서쪽으로 이동. 상암 DMC 단지 내.</div>
+        </div>
+      </div>
+
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 12분 · 5km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- STOP 6: 아만티호텔 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot">6</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div class="tl-name">아만티호텔 서울</div>
+            <div class="tl-price price-over">3,160만</div>
+          </div>
+          <div class="tl-addr">서울 마포구 월드컵북로 31 (서교동)</div>
+          <div class="tl-meta">
+            <span class="tl-tag">2호선 홍대입구역</span>
+            <span class="tl-tag">주차 300대</span>
+            <span class="tl-tag">120분 단독 채플</span>
+          </div>
+          <button class="copy-btn" onclick="copyAddr(this, '서울 마포구 월드컵북로 31')">
+            📋 주소 복사
+          </button>
+          <div class="tl-tip">DMC에서 가까움. 홍대 주변이라 투어 후 식사하기 좋음.</div>
+        </div>
+      </div>
+
+      <div class="tl-connector">
+        <div class="tl-drive">🚗 약 15분 · 6km</div>
+        <div class="tl-drive-line"></div>
+      </div>
+
+      <!-- END: 목동 -->
+      <div class="tl-stop">
+        <div class="tl-marker">
+          <div class="tl-dot end">끝</div>
+        </div>
+        <div class="tl-card" style="border-left:3px solid var(--ink3)">
+          <div class="tl-name">목동 복귀</div>
+          <div class="tl-addr">서울 양천구 목동</div>
+          <div class="tl-tip">총 이동시간 약 2시간 · 투어 포함 약 5~6시간 예상</div>
+        </div>
+      </div>
+
+    </div><!-- /timeline -->
+
+    <div style="margin-top:20px;padding:14px;background:var(--gold-light);border-radius:var(--radius);font-size:12px;color:var(--ink2);line-height:1.7">
+      <strong style="color:var(--gold)">💡 투어 팁</strong><br>
+      · 오전 10시 출발 → 3곳 방문 → 구로/신도림 근처 점심 → 3곳 방문 → 오후 4~5시 종료<br>
+      · 각 웨딩홀 투어는 30~40분 소요 (상담 포함 시 1시간)<br>
+      · 토요일 오전에는 실제 예식 진행을 볼 수 있어 분위기 확인 가능<br>
+      · 주소 복사 버튼으로 네이버/카카오 네비에 바로 붙여넣기 가능
+    </div>
+
+  </div><!-- /route-wrap -->
+</div><!-- /tab-route -->
+
 <footer>
   ※ 모든 가격은 추산이며 시기·보증인원·프로모션에 따라 변동됩니다.<br>
   반드시 직접 투어 후 견적 확인 권장 💍<br><br>
@@ -793,6 +1259,25 @@
       cards.sort((a, b) => +a.dataset.price - +b.dataset.price);
     }
     cards.forEach(c => list.appendChild(c));
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function copyAddr(btn, addr) {
+    navigator.clipboard.writeText(addr).then(function() {
+      btn.classList.add('copied');
+      btn.innerHTML = '✅ 복사 완료!';
+      setTimeout(function() {
+        btn.classList.remove('copied');
+        btn.innerHTML = '📋 주소 복사';
+      }, 2000);
+    });
   }
 </script>
 </body>
