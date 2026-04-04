@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>웨딩홀 리스트 💍</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f4f0;
+    --card: #ffffff;
+    --ink: #1a1714;
+    --ink2: #6b6560;
+    --ink3: #a39e99;
+    --gold: #b8935a;
+    --gold-light: #f5ede0;
+    --green: #3a7d5e;
+    --green-light: #e8f5ee;
+    --red: #c0392b;
+    --red-light: #fdecea;
+    --amber: #b8721a;
+    --amber-light: #fdf3e3;
+    --border: #e8e2da;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--ink);
+    color: #fff;
+    padding: 28px 20px 24px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  header p { font-size: 12px; color: #b0a99f; font-weight: 300; }
+
+  /* ── FILTER BAR ── */
+  .filter-wrap {
+    padding: 14px 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-wrap::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    display: inline-block;
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--ink2);
+    cursor: pointer;
+    margin-right: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .filter-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  /* ── SUMMARY STRIP ── */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .sum-item {
+    padding: 14px 8px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .sum-item:last-child { border-right: none; }
+  .sum-label { font-size: 10px; color: var(--ink3); margin-bottom: 3px; }
+  .sum-val { font-size: 14px; font-weight: 500; color: var(--ink); }
+
+  /* ── CARDS ── */
+  .cards { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .card:active { transform: scale(0.99); }
+  .card.best { border: 2px solid var(--gold); }
+
+  /* IMAGE */
+  .card-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    background: #ede8e0;
+  }
+  .img-placeholder {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: linear-gradient(135deg, #ede8e0 0%, #ddd5c8 100%);
+    color: var(--ink3);
+  }
+
+  /* CARD BODY */
+  .card-body { padding: 16px; }
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .card-title { font-family: 'Noto Serif KR', serif; font-size: 16px; font-weight: 600; line-height: 1.4; }
+  .card-sub { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+
+  .price-box { text-align: right; flex-shrink: 0; }
+  .price-label { font-size: 10px; color: var(--ink3); margin-bottom: 2px; }
+  .price-val { font-size: 15px; font-weight: 500; }
+  .price-ok { color: var(--green); }
+  .price-warn { color: var(--amber); }
+  .price-over { color: var(--red); }
+
+  /* BADGE ROW */
+  .badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+  .badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 400;
+  }
+  .b-gold  { background: var(--gold-light);  color: var(--gold); }
+  .b-green { background: var(--green-light); color: var(--green); }
+  .b-red   { background: var(--red-light);   color: var(--red); }
+  .b-amber { background: var(--amber-light); color: var(--amber); }
+  .b-gray  { background: #f0ece7; color: var(--ink2); }
+
+  /* INFO GRID */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .info-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .info-cell {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 9px 10px;
+  }
+  .info-lbl { font-size: 10px; color: var(--ink3); margin-bottom: 2px; }
+  .info-val { font-size: 12px; font-weight: 500; color: var(--ink); line-height: 1.4; }
+
+  /* KTX ROW */
+  .ktx-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    background: var(--green-light);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--green);
+  }
+  .ktx-row span { font-weight: 500; }
+
+  /* NOTE */
+  .note {
+    font-size: 12px;
+    color: var(--ink2);
+    line-height: 1.7;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 10px;
+    border-left: 3px solid var(--border);
+  }
+  .note.warn { border-left-color: var(--amber); background: var(--amber-light); color: var(--amber); }
+  .note.danger { border-left-color: var(--red); background: var(--red-light); color: var(--red); }
+
+  /* COST CALC */
+  .calc-wrap {
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--gold-light);
+    border-radius: 10px;
+  }
+  .calc-title { font-size: 11px; color: var(--gold); font-weight: 500; margin-bottom: 8px; }
+  .calc-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink2); padding: 3px 0; }
+  .calc-row.total { font-weight: 500; color: var(--ink); border-top: 1px solid #ddd0bc; margin-top: 4px; padding-top: 6px; font-size: 13px; }
+
+  /* BEST BANNER */
+  .best-banner {
+    background: var(--gold);
+    color: #fff;
+    text-align: center;
+    font-size: 11px;
+    padding: 6px;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+
+  /* DIVIDER */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 16px;
+  }
+  .section-divider span { font-size: 11px; color: var(--ink3); white-space: nowrap; }
+  .section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 24px 16px;
+    font-size: 11px;
+    color: var(--ink3);
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💍 웨딩홀 비교 리스트</h1>
+  <p>신랑 100명 (광주) + 신부 80명 (서울) · 예산 1,000만원</p>
+</header>
+
+<div class="filter-wrap">
+  <button class="filter-btn active" onclick="sort('default')">기본 정렬</button>
+  <button class="filter-btn" onclick="sort('price')">가격 낮은순</button>
+  <button class="filter-btn" onclick="sort('ktx')">KTX 접근성순</button>
+  <button class="filter-btn" onclick="sort('parking')">주차 많은순</button>
+</div>
+
+<div class="summary">
+  <div class="sum-item">
+    <div class="sum-label">총 하객 수</div>
+    <div class="sum-val">180명</div>
+  </div>
+  <div class="sum-item">
+    <div class="sum-label">목표 예산</div>
+    <div class="sum-val">~1,000만</div>
+  </div>
+  <div class="sum-item">
+    <div class="sum-label">광주→서울역</div>
+    <div class="sum-val">KTX 90분</div>
+  </div>
+</div>
+
+<div class="cards" id="card-list">
+
+  <!-- ① 제이오스티엘 -->
+  <div class="card best" data-price="1367" data-ktx="5" data-parking="3000">
+    <div class="best-banner">★ 가격 최우선 추천</div>
+    <img class="card-img"
+         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/68f5eb94066ef258cf3b311e_1.avif"
+         alt="제이오스티엘 티파니홀"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-placeholder" style="display:none">🏛️</div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">제이오스티엘</div>
+          <div class="card-sub">서울 구로구 구로동 · 1호선 구로역 도보 2분</div>
+        </div>
+        <div class="price-box">
+          <div class="price-label">180명 기준</div>
+          <div class="price-val price-ok">약 1,367만원</div>
+        </div>
+      </div>
+
+      <div class="ktx-row">
+        🚄 <span>서울역 → 1호선 직행 · 환승 없음 · 약 20분</span>
+      </div>
+
+      <div class="badges">
+        <span class="badge b-gold">가격 1위</span>
+        <span class="badge b-green">KTX 접근성 ★★★★★</span>
+        <span class="badge b-green">단독홀</span>
+        <span class="badge b-gray">보증 150명~</span>
+        <span class="badge b-gray">주차 3,000대 무료</span>
+      </div>
+
+      <div class="info-grid three">
+        <div class="info-cell">
+          <div class="info-lbl">대관료 (꽃 포함)</div>
+          <div class="info-val">350만원~</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">식대 (음주류 포함)</div>
+          <div class="info-val">5.5~5.8만원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">예식 간격</div>
+          <div class="info-val">60분 분리예식</div>
+        </div>
+      </div>
+
+      <div class="calc-wrap">
+        <div class="calc-title">📊 예상 견적 (180명 기준)</div>
+        <div class="calc-row"><span>대관료</span><span>350만원</span></div>
+        <div class="calc-row"><span>식대 (5.65만 × 180)</span><span>1,017만원</span></div>
+        <div class="calc-row total"><span>예상 합계</span><span>약 1,367만원</span></div>
+      </div>
+
+      <div class="note" style="margin-top:10px">
+        광주 하객분들이 서울역에서 1호선만 타면 구로역까지 바로 연결. 환승 없이 도보 2분 거리라 어르신도 편리. 단독홀로 프라이빗한 예식 가능. 홀 수용 최대 850명이라 여유 있음.
+      </div>
+    </div>
+  </div>
+
+  <!-- ② SW 컨벤션센터 -->
+  <div class="card" data-price="1390" data-ktx="4" data-parking="500">
+    <div class="img-placeholder">🏙️</div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">SW 컨벤션센터</div>
+          <div class="card-sub">서울 종로구 창신동 · 1·6호선 동묘앞역 6번 출구 도보 1분</div>
+        </div>
+        <div class="price-box">
+          <div class="price-label">180명 기준</div>
+          <div class="price-val price-ok">약 1,390만원</div>
+        </div>
+      </div>
+
+      <div class="ktx-row">
+        🚄 <span>서울역 → 1호선 → 동묘앞역 · 환승 없음 · 약 25분</span>
+      </div>
+
+      <div class="badges">
+        <span class="badge b-green">가격 2위</span>
+        <span class="badge b-green">KTX 접근성 ★★★★</span>
+        <span class="badge b-green">단독홀</span>
+        <span class="badge b-gray">90분 넉넉한 예식</span>
+        <span class="badge b-gray">11층 스카이뷰</span>
+      </div>
+
+      <div class="info-grid three">
+        <div class="info-cell">
+          <div class="info-lbl">대관료 (꽃+연출 포함)</div>
+          <div class="info-val">300~500만원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">식대 (음주류 포함)</div>
+          <div class="info-val">5~6만원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">예식 간격</div>
+          <div class="info-val">90분 분리예식</div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-cell">
+          <div class="info-lbl">보증인원</div>
+          <div class="info-val">200~300명</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">주차</div>
+          <div class="info-val">500대 / 90분 무료</div>
+        </div>
+      </div>
+
+      <div class="calc-wrap">
+        <div class="calc-title">📊 예상 견적 (180명 기준)</div>
+        <div class="calc-row"><span>대관료 (꽃+연출 포함)</span><span>400만원</span></div>
+        <div class="calc-row"><span>식대 (5.5만 × 180)</span><span>990만원</span></div>
+        <div class="calc-row total"><span>예상 합계</span><span>약 1,390만원</span></div>
+      </div>
+
+      <div class="note" style="margin-top:10px">
+        꽃장식·연출료가 대관료에 이미 포함되어 추가금 리스크 낮음. 11층 스카이 단독홀로 도심 뷰가 보임. 1997년부터 운영한 오랜 식장이라 진행이 안정적.
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 웨딩시티 신도림 -->
+  <div class="card" data-price="2375" data-ktx="5" data-parking="2000">
+    <div class="img-placeholder" style="background: linear-gradient(135deg, #e8e2f8 0%, #d5cef0 100%)">🌸</div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">웨딩시티 신도림</div>
+          <div class="card-sub">서울 구로구 신도림테크노마트 8층 · 1·2호선 신도림역</div>
+        </div>
+        <div class="price-box">
+          <div class="price-label">보증 250명 기준</div>
+          <div class="price-val price-warn">약 2,375만원↑</div>
+        </div>
+      </div>
+
+      <div class="ktx-row">
+        🚄 <span>서울역 → 1호선 신도림역 직행 · 약 15분 (최단)</span>
+      </div>
+
+      <div class="badges">
+        <span class="badge b-green">KTX 접근성 ★★★★★</span>
+        <span class="badge b-green">토다이 뷔페 (음식 최고)</span>
+        <span class="badge b-gray">주차 2,000대</span>
+        <span class="badge b-red">보증인원 250명 주의</span>
+      </div>
+
+      <div class="info-grid three">
+        <div class="info-cell">
+          <div class="info-lbl">대관료 (생화 포함)</div>
+          <div class="info-val">800만원~</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">식대 (음주류 포함)</div>
+          <div class="info-val">63,000원~</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">예식 간격</div>
+          <div class="info-val">70~80분</div>
+        </div>
+      </div>
+
+      <div class="calc-wrap">
+        <div class="calc-title">📊 예상 견적</div>
+        <div class="calc-row"><span>대관료 (생화 포함)</span><span>800만원</span></div>
+        <div class="calc-row"><span>식대 (6.3만 × <b>250명</b>)</span><span>1,575만원</span></div>
+        <div class="calc-row total"><span>예상 합계</span><span>약 2,375만원</span></div>
+      </div>
+
+      <div class="note danger" style="margin-top:10px">
+        ⚠️ 최소 보증인원 250명 — 180명 참석해도 250인분 식대(1,575만원) 전액 납부 필요. 교통·음식 퀄리티는 최상이지만 예산 초과폭이 큼.
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ DMC 타워 웨딩 -->
+  <div class="card" data-price="2134" data-ktx="5" data-parking="500">
+    <img class="card-img"
+         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/68ec78027a168659ddbf02bb_%ED%8E%A0%EB%A6%AC%EC%B2%B4%ED%99%80.avif"
+         alt="DMC타워웨딩 펠리체홀"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-placeholder" style="display:none">✨</div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">DMC 타워 웨딩</div>
+          <div class="card-sub">서울 마포구 상암동 · DMC역 (6호선+공항철도+경의중앙선)</div>
+        </div>
+        <div class="price-box">
+          <div class="price-label">라피네홀 기준</div>
+          <div class="price-val price-warn">약 2,134만원</div>
+        </div>
+      </div>
+
+      <div class="ktx-row">
+        🚄 <span>서울역 → 공항철도 DMC역 직행 · 약 10분</span>
+      </div>
+
+      <div class="badges">
+        <span class="badge b-green">공항철도 서울역 직행 ★★★★★</span>
+        <span class="badge b-green">트리플 역세권</span>
+        <span class="badge b-gray">홀 3종 선택</span>
+        <span class="badge b-amber">식대 8.8만원 (고가)</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-cell">
+          <div class="info-lbl">라피네홀 대관료</div>
+          <div class="info-val">550만원~</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">그랜드볼룸 대관료</div>
+          <div class="info-val">900만원~</div>
+        </div>
+      </div>
+      <div class="info-grid three">
+        <div class="info-cell">
+          <div class="info-lbl">식대 (음주류 포함)</div>
+          <div class="info-val">88,000원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">보증인원</div>
+          <div class="info-val">100명~ (라피네)</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">주차</div>
+          <div class="info-val">500대 2h 무료</div>
+        </div>
+      </div>
+
+      <div class="calc-wrap">
+        <div class="calc-title">📊 예상 견적 (라피네홀 · 180명)</div>
+        <div class="calc-row"><span>대관료 (꽃 포함)</span><span>550만원</span></div>
+        <div class="calc-row"><span>식대 (8.8만 × 180)</span><span>1,584만원</span></div>
+        <div class="calc-row total"><span>예상 합계</span><span>약 2,134만원</span></div>
+      </div>
+
+      <div class="note" style="margin-top:10px">
+        공항철도로 서울역에서 딱 한 정거장. 지방 하객 동선 최고. 펠리체홀(신관 밝은홀)·그랜드볼룸·라피네홀 3종 보유. 라피네홀은 150석이라 180명은 약간 빡빡할 수 있음.
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ 더뉴컨벤션 웨딩 -->
+  <div class="card" data-price="2676" data-ktx="3" data-parking="600">
+    <img class="card-img"
+         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/68ec9f47955088aa287a2a25_b7a70fdd06035.avif"
+         alt="더뉴컨벤션웨딩 르노브홀"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-placeholder" style="display:none">🌿</div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">더뉴컨벤션 웨딩</div>
+          <div class="card-sub">서울 강서구 내발산동 · 5호선 발산역 도보 3분</div>
+        </div>
+        <div class="price-box">
+          <div class="price-label">르노브홀 기준</div>
+          <div class="price-val price-over">약 2,676만원</div>
+        </div>
+      </div>
+
+      <div class="ktx-row" style="background:#fdf3e3;color:#854F0B">
+        🚇 <span>서울역 → 5호선 환승 필요 · 약 40분 (비교적 불편)</span>
+      </div>
+
+      <div class="badges">
+        <span class="badge b-gray">강서 유일 단독 웨딩 건물</span>
+        <span class="badge b-gray">S자 버진로드 (르노브)</span>
+        <span class="badge b-gray">크리스탈 샹들리에 (더뉴홀)</span>
+        <span class="badge b-amber">KTX 접근성 ★★★</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-cell">
+          <div class="info-lbl">르노브홀 (1F) 대관료</div>
+          <div class="info-val">900만 + 연출 300만</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">더뉴홀 (2F) 대관료</div>
+          <div class="info-val">1,100만 + 연출 300만</div>
+        </div>
+      </div>
+      <div class="info-grid three">
+        <div class="info-cell">
+          <div class="info-lbl">식대 (음주류 포함)</div>
+          <div class="info-val">82,000원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">보증인원</div>
+          <div class="info-val">200명~</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">주차</div>
+          <div class="info-val">600대 2h 무료</div>
+        </div>
+      </div>
+
+      <div class="calc-wrap">
+        <div class="calc-title">📊 예상 견적 (르노브홀 · 180명)</div>
+        <div class="calc-row"><span>대관료 + 연출료</span><span>1,200만원</span></div>
+        <div class="calc-row"><span>식대 (8.2만 × 180)</span><span>1,476만원</span></div>
+        <div class="calc-row total"><span>예상 합계</span><span>약 2,676만원</span></div>
+      </div>
+
+      <div class="note" style="margin-top:10px">
+        인테리어 퀄리티 평가 매우 높음. 르노브홀은 밝고 가든 느낌, 더뉴홀은 어두운 샹들리에 느낌. 웨딩홀 전용 단독 건물이라 쾌적. 단, 서울역에서 환승이 필요해 광주 하객 이동 다소 불편.
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ 아만티호텔 -->
+  <div class="card" data-price="3160" data-ktx="4" data-parking="300">
+    <img class="card-img"
+         src="https://cdn.prod.website-files.com/66a1eeaa00f1c86c3dbae974/66e002dd82b332f59d7740b3_image.avif"
+         alt="아만티호텔 웨딩홀"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-placeholder" style="display:none">🕊️</div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">아만티호텔 서울</div>
+          <div class="card-sub">서울 마포구 서교동 (홍대) · 2호선 홍대입구역</div>
+        </div>
+        <div class="price-box">
+          <div class="price-label">보증 300명 기준</div>
+          <div class="price-val price-over">약 3,160만원↑↑</div>
+        </div>
+      </div>
+
+      <div class="ktx-row" style="background:#fdf3e3;color:#854F0B">
+        🚇 <span>서울역 → 공항철도 홍대입구역 · 약 10분 (환승 없음)</span>
+      </div>
+
+      <div class="badges">
+        <span class="badge b-gray">120분 단독홀 (가장 여유)</span>
+        <span class="badge b-gray">유럽풍 채플홀</span>
+        <span class="badge b-gray">호텔 서비스</span>
+        <span class="badge b-red">보증인원 300명 주의</span>
+      </div>
+
+      <div class="info-grid three">
+        <div class="info-cell">
+          <div class="info-lbl">대관료 + 꽃장식</div>
+          <div class="info-val">400만 + 450만원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">식대 (음주류 포함)</div>
+          <div class="info-val">77,000원</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-lbl">예식 간격</div>
+          <div class="info-val">120분 단독</div>
+        </div>
+      </div>
+
+      <div class="calc-wrap">
+        <div class="calc-title">📊 예상 견적</div>
+        <div class="calc-row"><span>대관료 + 꽃장식</span><span>850만원</span></div>
+        <div class="calc-row"><span>식대 (7.7만 × <b>300명</b>)</span><span>2,310만원</span></div>
+        <div class="calc-row total"><span>예상 합계</span><span>약 3,160만원</span></div>
+      </div>
+
+      <div class="note danger" style="margin-top:10px">
+        ⚠️ 최소 보증인원 300명 — 180명 참석해도 300인분(2,310만원) 전액 납부. 대관료 자체는 싸지만 보증인원 때문에 총비용이 가장 비쌈. 120분 여유로운 예식은 최대 강점.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /cards -->
+
+<div class="section-divider" style="margin:8px 0"><span>버스 대절 참고</span></div>
+
+<div style="margin:0 16px 16px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:16px;">
+  <div style="font-size:13px;font-weight:500;margin-bottom:10px;">🚌 광주→서울 버스 대절 예상비용</div>
+  <div class="info-grid">
+    <div class="info-cell">
+      <div class="info-lbl">45인승 1대 왕복</div>
+      <div class="info-val">80~100만원</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">필요 대수 (100명)</div>
+      <div class="info-val">3대</div>
+    </div>
+  </div>
+  <div class="info-grid">
+    <div class="info-cell">
+      <div class="info-lbl">총 예상 비용</div>
+      <div class="info-val" style="color:var(--ink)">약 270~360만원</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">KTX 100명 왕복 비교</div>
+      <div class="info-val" style="color:var(--red)">약 780~920만원</div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:8px">버스 대절이 KTX 단체 예약보다 약 500만원 이상 저렴. 어르신 하객분들 직행 이동 편의성도 높음. 견적 비교: allbus.kr / callbus.com</div>
+</div>
+
+<footer>
+  ※ 모든 가격은 추산이며 시기·보증인원·프로모션에 따라 변동됩니다.<br>
+  반드시 직접 투어 후 견적 확인 권장 💍<br><br>
+  업데이트: 2026년 4월
+</footer>
+
+<script>
+  const list = document.getElementById('card-list');
+
+  function sort(type) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const cards = Array.from(list.querySelectorAll('.card'));
+    if (type === 'price') {
+      cards.sort((a, b) => +a.dataset.price - +b.dataset.price);
+    } else if (type === 'ktx') {
+      cards.sort((a, b) => +b.dataset.ktx - +a.dataset.ktx);
+    } else if (type === 'parking') {
+      cards.sort((a, b) => +b.dataset.parking - +a.dataset.parking);
+    } else {
+      cards.sort((a, b) => +a.dataset.price - +b.dataset.price);
+    }
+    cards.forEach(c => list.appendChild(c));
+  }
+</script>
+</body>
+</html>
