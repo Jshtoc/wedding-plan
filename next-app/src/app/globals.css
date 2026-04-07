@@ -526,3 +526,230 @@ footer {
   }
   .card-img, .img-placeholder { height: 260px; }
 }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-content {
+  background: var(--card);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h2 {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--ink3);
+  padding: 4px 8px;
+}
+.modal-body {
+  overflow-y: auto;
+  padding: 16px 20px;
+  flex: 1;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* FORM */
+.form-section {
+  margin-bottom: 20px;
+}
+.form-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gold);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.form-group.full {
+  grid-column: 1 / -1;
+}
+.form-group label {
+  font-size: 10px;
+  color: var(--ink3);
+  font-weight: 400;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--gold);
+}
+.form-group textarea {
+  resize: vertical;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px !important;
+  color: var(--ink2) !important;
+  cursor: pointer;
+  flex-direction: row !important;
+}
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold);
+}
+
+.btn-add {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--ink2);
+  cursor: pointer;
+}
+.btn-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--red-light);
+  color: var(--red);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-cancel {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--ink2);
+  font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+}
+.btn-save {
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: none;
+  background: var(--gold);
+  color: #fff;
+  font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* CARD ACTION BUTTONS */
+.card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+}
+.card-actions button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  font-family: 'Noto Sans KR', sans-serif;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.card-actions button:hover {
+  background: var(--border);
+}
+.card-actions .btn-delete {
+  color: var(--red);
+  border-color: var(--red-light);
+  background: var(--red-light);
+}
+.card-actions .btn-delete:hover {
+  background: #f9d0cc;
+}
+
+/* FAB (새 등록 버튼) */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.fab:hover {
+  transform: scale(1.1);
+}
+.fab:active {
+  transform: scale(0.95);
+}

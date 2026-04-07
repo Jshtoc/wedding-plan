@@ -3,8 +3,20 @@
 import { useState } from "react";
 import { WeddingHall } from "@/data/halls";
 
-export default function HallCard({ hall }: { hall: WeddingHall }) {
+interface Props {
+  hall: WeddingHall;
+  onEdit: (hall: WeddingHall) => void;
+  onDelete: (id: number) => void;
+}
+
+export default function HallCard({ hall, onEdit, onDelete }: Props) {
   const [imgError, setImgError] = useState(false);
+
+  const handleDelete = () => {
+    if (confirm(`"${hall.name}" 을(를) 삭제하시겠습니까?`)) {
+      onDelete(hall.id);
+    }
+  };
 
   return (
     <div
@@ -95,6 +107,11 @@ export default function HallCard({ hall }: { hall: WeddingHall }) {
         >
           {hall.note}
         </div>
+      </div>
+
+      <div className="card-actions">
+        <button onClick={() => onEdit(hall)}>✏️ 수정</button>
+        <button className="btn-delete" onClick={handleDelete}>🗑️ 삭제</button>
       </div>
     </div>
   );

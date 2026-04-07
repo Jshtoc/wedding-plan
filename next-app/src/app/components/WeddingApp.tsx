@@ -1,16 +1,32 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { halls, WeddingHall } from "@/data/halls";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { WeddingHall } from "@/data/halls";
 import HallCard from "./HallCard";
 import RouteTab from "./RouteTab";
+import HallFormModal from "./HallFormModal";
 
 type SortType = "default" | "price" | "ktx" | "parking";
 type TabType = "list" | "route";
 
 export default function WeddingApp() {
+  const [halls, setHalls] = useState<WeddingHall[]>([]);
   const [sortType, setSortType] = useState<SortType>("default");
   const [activeTab, setActiveTab] = useState<TabType>("list");
+  const [showModal, setShowModal] = useState(false);
+  const [editingHall, setEditingHall] = useState<WeddingHall | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHalls = useCallback(async () => {
+    const res = await fetch("/api/halls");
+    const data = await res.json();
+    setHalls(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchHalls();
+  }, [fetchHalls]);
 
   const sortedHalls = useMemo(() => {
     const sorted = [...halls];
@@ -29,7 +45,7 @@ export default function WeddingApp() {
         break;
     }
     return sorted;
-  }, [sortType]);
+  }, [halls, sortType]);
 
   const sortButtons: { type: SortType; label: string }[] = [
     { type: "default", label: "기본 정렬" },
@@ -41,6 +57,21 @@ export default function WeddingApp() {
   const switchTab = (tab: TabType) => {
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleEdit = (hall: WeddingHall) => {
+    setEditingHall(hall);
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    await fetch(`/api/halls/${id}`, { method: "DELETE" });
+    fetchHalls();
+  };
+
+  const handleAdd = () => {
+    setEditingHall(null);
+    setShowModal(true);
   };
 
   return (
@@ -94,11 +125,22 @@ export default function WeddingApp() {
             </div>
           </div>
 
-          <div className="cards">
-            {sortedHalls.map((hall) => (
-              <HallCard key={hall.id} hall={hall} />
-            ))}
-          </div>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 40, color: "var(--ink3)" }}>
+              불러오는 중...
+            </div>
+          ) : (
+            <div className="cards">
+              {sortedHalls.map((hall) => (
+                <HallCard
+                  key={hall.id}
+                  hall={hall}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="section-divider" style={{ margin: "8px 0" }}>
             <span>버스 대절 참고</span>
@@ -114,9 +156,7 @@ export default function WeddingApp() {
               padding: 16,
             }}
           >
-            <div
-              style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}
-            >
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>
               🚌 광주→서울 버스 대절 예상비용
             </div>
             <div className="info-grid">
@@ -162,6 +202,20 @@ export default function WeddingApp() {
         <br />
         업데이트: 2026년 4월
       </footer>
+
+      {/* 새 등록 FAB */}
+      <button className="fab" onClick={handleAdd} title="새 웨딩홀 등록">
+        +
+      </button>
+
+      {/* 등록/수정 모달 */}
+      {showModal && (
+        <HallFormModal
+          hall={editingHall}
+          onClose={() => setShowModal(false)}
+          onSaved={fetchHalls}
+        />
+      )}
     </>
   );
 }
