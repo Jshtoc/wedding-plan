@@ -5,6 +5,7 @@ import { WeddingHall } from "@/data/halls";
 import HallCard from "./HallCard";
 import RouteTab from "./RouteTab";
 import HallFormModal from "./HallFormModal";
+import TwEmoji from "./ui/TwEmoji";
 
 type SortType = "default" | "price" | "ktx" | "parking";
 type TabType = "list" | "route";
@@ -74,10 +75,24 @@ export default function WeddingApp() {
     setShowModal(true);
   };
 
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  };
+
   return (
     <>
-      <header>
-        <h1>💍 웨딩홀 비교 리스트</h1>
+      <header className="sticky top-0">
+        <button
+          onClick={handleLogout}
+          title="로그아웃"
+          className="absolute top-4 right-4 bg-white/10 text-white border border-white/20 rounded-lg px-2.5 py-1.5 text-[11px] cursor-pointer"
+        >
+          로그아웃
+        </button>
+        <h1>
+          <TwEmoji emoji="💍" size={20} /> 웨딩홀 비교 리스트
+        </h1>
         <p>신랑 100명 (광주) + 신부 80명 (서울) · 예산 1,000만원</p>
       </header>
 
@@ -126,7 +141,7 @@ export default function WeddingApp() {
           </div>
 
           {loading ? (
-            <div style={{ textAlign: "center", padding: 40, color: "var(--ink3)" }}>
+            <div className="text-center p-10 text-[var(--ink3)]">
               불러오는 중...
             </div>
           ) : (
@@ -142,22 +157,13 @@ export default function WeddingApp() {
             </div>
           )}
 
-          <div className="section-divider" style={{ margin: "8px 0" }}>
+          <div className="section-divider my-2">
             <span>버스 대절 참고</span>
           </div>
 
-          <div
-            className="bus-section"
-            style={{
-              margin: "0 16px 16px",
-              background: "var(--card)",
-              borderRadius: "var(--radius)",
-              border: "1px solid var(--border)",
-              padding: 16,
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>
-              🚌 광주→서울 버스 대절 예상비용
+          <div className="bus-section mx-4 mb-4 bg-[var(--card)] rounded-[var(--radius)] border border-[var(--border)] p-4">
+            <div className="text-[13px] font-medium mb-2.5">
+              <TwEmoji emoji="🚌" size={14} /> 광주→서울 버스 대절 예상비용
             </div>
             <div className="info-grid">
               <div className="info-cell">
@@ -172,18 +178,14 @@ export default function WeddingApp() {
             <div className="info-grid">
               <div className="info-cell">
                 <div className="info-lbl">총 예상 비용</div>
-                <div className="info-val" style={{ color: "var(--ink)" }}>
-                  약 270~360만원
-                </div>
+                <div className="info-val text-[var(--ink)]">약 270~360만원</div>
               </div>
               <div className="info-cell">
                 <div className="info-lbl">KTX 100명 왕복 비교</div>
-                <div className="info-val" style={{ color: "var(--red)" }}>
-                  약 780~920만원
-                </div>
+                <div className="info-val text-[var(--red)]">약 780~920만원</div>
               </div>
             </div>
-            <div className="note" style={{ marginTop: 8 }}>
+            <div className="note mt-2">
               버스 대절이 KTX 단체 예약보다 약 500만원 이상 저렴. 어르신
               하객분들 직행 이동 편의성도 높음. 견적 비교: allbus.kr /
               callbus.com
@@ -197,7 +199,7 @@ export default function WeddingApp() {
       <footer>
         ※ 모든 가격은 추산이며 시기·보증인원·프로모션에 따라 변동됩니다.
         <br />
-        반드시 직접 투어 후 견적 확인 권장 💍
+        반드시 직접 투어 후 견적 확인 권장 <TwEmoji emoji="💍" size={12} />
         <br />
         <br />
         업데이트: 2026년 4월

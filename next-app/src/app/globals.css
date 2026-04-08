@@ -1,32 +1,56 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css');
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap');
+@theme {
+  --font-pretendard: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+
+  --color-bg: #f7f4f0;
+  --color-card: #ffffff;
+  --color-ink: #1a1714;
+  --color-ink2: #6b6560;
+  --color-ink3: #a39e99;
+  --color-gold: #b8935a;
+  --color-gold-light: #f5ede0;
+  --color-green: #3a7d5e;
+  --color-green-light: #e8f5ee;
+  --color-red: #c0392b;
+  --color-red-light: #fdecea;
+  --color-amber: #b8721a;
+  --color-amber-light: #fdf3e3;
+  --color-border: #e8e2da;
+
+  --radius-card: 16px;
+}
 
 :root {
-  --bg: #f7f4f0;
-  --card: #ffffff;
-  --ink: #1a1714;
-  --ink2: #6b6560;
-  --ink3: #a39e99;
-  --gold: #b8935a;
-  --gold-light: #f5ede0;
-  --green: #3a7d5e;
-  --green-light: #e8f5ee;
-  --red: #c0392b;
-  --red-light: #fdecea;
-  --amber: #b8721a;
-  --amber-light: #fdf3e3;
-  --border: #e8e2da;
-  --radius: 16px;
+  --bg: var(--color-bg);
+  --card: var(--color-card);
+  --ink: var(--color-ink);
+  --ink2: var(--color-ink2);
+  --ink3: var(--color-ink3);
+  --gold: var(--color-gold);
+  --gold-light: var(--color-gold-light);
+  --green: var(--color-green);
+  --green-light: var(--color-green-light);
+  --red: var(--color-red);
+  --red-light: var(--color-red-light);
+  --amber: var(--color-amber);
+  --amber-light: var(--color-amber-light);
+  --border: var(--color-border);
+  --radius: var(--radius-card);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Twemoji inline image */
+.twemoji {
+  display: inline-block;
+  vertical-align: -0.15em;
+}
+
 body {
   background: var(--bg);
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   color: var(--ink);
   min-height: 100vh;
 }
@@ -42,7 +66,7 @@ header {
   z-index: 100;
 }
 header h1 {
-  font-family: 'Noto Serif KR', serif;
+  font-family: var(--font-pretendard);
   font-size: 20px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -68,7 +92,7 @@ header p { font-size: 12px; color: #b0a99f; font-weight: 300; }
   border: 1px solid var(--border);
   background: transparent;
   font-size: 12px;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   color: var(--ink2);
   cursor: pointer;
   margin-right: 8px;
@@ -147,7 +171,7 @@ header p { font-size: 12px; color: #b0a99f; font-weight: 300; }
   margin-bottom: 12px;
   gap: 8px;
 }
-.card-title { font-family: 'Noto Serif KR', serif; font-size: 16px; font-weight: 600; line-height: 1.4; }
+.card-title { font-family: var(--font-pretendard); font-size: 16px; font-weight: 600; line-height: 1.4; }
 .card-sub { font-size: 11px; color: var(--ink3); margin-top: 2px; }
 
 .price-box { text-align: right; flex-shrink: 0; }
@@ -278,7 +302,7 @@ footer {
   padding: 14px 8px;
   text-align: center;
   font-size: 13px;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   font-weight: 500;
   color: var(--ink3);
   background: transparent;
@@ -308,7 +332,7 @@ footer {
   text-align: center;
 }
 .route-header h2 {
-  font-family: 'Noto Serif KR', serif;
+  font-family: var(--font-pretendard);
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 6px;
@@ -411,7 +435,7 @@ footer {
   gap: 8px;
 }
 .tl-name {
-  font-family: 'Noto Serif KR', serif;
+  font-family: var(--font-pretendard);
   font-size: 15px;
   font-weight: 600;
 }
@@ -450,7 +474,7 @@ footer {
   border: 1px solid var(--border);
   background: var(--bg);
   font-size: 12px;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   color: var(--ink2);
   cursor: pointer;
   transition: all 0.2s;
@@ -556,7 +580,7 @@ footer {
   border-bottom: 1px solid var(--border);
 }
 .modal-header h2 {
-  font-family: 'Noto Serif KR', serif;
+  font-family: var(--font-pretendard);
   font-size: 16px;
   font-weight: 600;
 }
@@ -615,7 +639,7 @@ footer {
 .form-group input,
 .form-group select,
 .form-group textarea {
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   font-size: 13px;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -678,7 +702,7 @@ footer {
   background: var(--bg);
   color: var(--ink2);
   font-size: 13px;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   cursor: pointer;
 }
 .btn-save {
@@ -688,7 +712,7 @@ footer {
   background: var(--gold);
   color: #fff;
   font-size: 13px;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   font-weight: 500;
   cursor: pointer;
 }
@@ -710,7 +734,7 @@ footer {
   border: 1px solid var(--border);
   background: var(--bg);
   font-size: 12px;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: var(--font-pretendard);
   color: var(--ink2);
   cursor: pointer;
   transition: all 0.2s;

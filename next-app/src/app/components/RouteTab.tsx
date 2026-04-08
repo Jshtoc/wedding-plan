@@ -1,7 +1,6 @@
-"use client";
-
 import { routeItems } from "@/data/halls";
 import CopyButton from "./CopyButton";
+import TwEmoji from "./ui/TwEmoji";
 
 export default function RouteTab() {
   return (
@@ -41,12 +40,14 @@ export default function RouteTab() {
           }
 
           const stop = item.data;
-          const dotClass =
-            stop.type === "start"
-              ? "tl-dot start"
-              : stop.type === "end"
-                ? "tl-dot end"
-                : "tl-dot";
+          const dotClass = [
+            "tl-dot",
+            stop.type === "start" ? "start" : "",
+            stop.type === "end" ? "end" : "",
+            stop.isBest ? "bg-[var(--gold)]" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
           const dotLabel =
             stop.type === "start"
               ? "출"
@@ -54,38 +55,24 @@ export default function RouteTab() {
                 ? "끝"
                 : String(stop.number);
 
-          const cardStyle: React.CSSProperties = {};
-          if (stop.type === "start")
-            cardStyle.borderLeft = "3px solid var(--green)";
-          if (stop.type === "end")
-            cardStyle.borderLeft = "3px solid var(--ink3)";
-          if (stop.isBest) cardStyle.border = "2px solid var(--gold)";
-
-          const dotStyle: React.CSSProperties = {};
-          if (stop.isBest) dotStyle.background = "var(--gold)";
+          const cardClass = [
+            "tl-card",
+            stop.type === "start" ? "border-l-[3px] border-l-[var(--green)]" : "",
+            stop.type === "end" ? "border-l-[3px] border-l-[var(--ink3)]" : "",
+            stop.isBest ? "border-2 border-[var(--gold)]" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
 
           return (
             <div key={i} className="tl-stop">
               <div className="tl-marker">
-                <div className={dotClass} style={dotStyle}>
-                  {dotLabel}
-                </div>
+                <div className={dotClass}>{dotLabel}</div>
                 {stop.type !== "end" && <div className="tl-line"></div>}
               </div>
-              <div className="tl-card" style={cardStyle}>
+              <div className={cardClass}>
                 {stop.isBest && stop.bestLabel && (
-                  <div
-                    style={{
-                      background: "var(--gold-light)",
-                      color: "var(--gold)",
-                      fontSize: 10,
-                      fontWeight: 500,
-                      padding: "3px 10px",
-                      borderRadius: 20,
-                      display: "inline-block",
-                      marginBottom: 8,
-                    }}
-                  >
+                  <div className="inline-block bg-[var(--gold-light)] text-[var(--gold)] text-[10px] font-medium px-2.5 py-[3px] rounded-[20px] mb-2">
                     {stop.bestLabel}
                   </div>
                 )}
@@ -124,18 +111,10 @@ export default function RouteTab() {
         })}
       </div>
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 14,
-          background: "var(--gold-light)",
-          borderRadius: "var(--radius)",
-          fontSize: 12,
-          color: "var(--ink2)",
-          lineHeight: 1.7,
-        }}
-      >
-        <strong style={{ color: "var(--gold)" }}>💡 투어 팁</strong>
+      <div className="mt-5 p-3.5 bg-[var(--gold-light)] rounded-[var(--radius)] text-xs text-[var(--ink2)] leading-[1.7]">
+        <strong className="text-[var(--gold)]">
+          <TwEmoji emoji="💡" size={14} /> 투어 팁
+        </strong>
         <br />
         · 오전 10시 출발 → 3곳 방문 → 구로/신도림 근처 점심 → 3곳 방문 →
         오후 4~5시 종료

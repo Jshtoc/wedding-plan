@@ -314,12 +314,12 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
               <button className="btn-add" onClick={addInfoRow}>+ 행 추가</button>
             </div>
             {infoRows.map((row, i) => (
-              <div key={i} className="form-grid" style={{ marginBottom: 4 }}>
+              <div key={i} className="form-grid mb-1">
                 <div className="form-group">
                   <input value={row.label} onChange={(e) => updateInfoRow(i, "label", e.target.value)} placeholder="항목명" />
                 </div>
-                <div className="form-group" style={{ display: "flex", gap: 4 }}>
-                  <input value={row.value} onChange={(e) => updateInfoRow(i, "value", e.target.value)} placeholder="값" style={{ flex: 1 }} />
+                <div className="form-group flex gap-1">
+                  <input value={row.value} onChange={(e) => updateInfoRow(i, "value", e.target.value)} placeholder="값" className="flex-1" />
                   <button className="btn-remove" onClick={() => removeInfoRow(i)}>✕</button>
                 </div>
               </div>
@@ -333,12 +333,12 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
               <button className="btn-add" onClick={addExtraRow}>+ 행 추가</button>
             </div>
             {extraRows.map((row, i) => (
-              <div key={i} className="form-grid" style={{ marginBottom: 4 }}>
+              <div key={i} className="form-grid mb-1">
                 <div className="form-group">
                   <input value={row.label} onChange={(e) => updateExtraRow(i, "label", e.target.value)} placeholder="항목명" />
                 </div>
-                <div className="form-group" style={{ display: "flex", gap: 4 }}>
-                  <input value={row.value} onChange={(e) => updateExtraRow(i, "value", e.target.value)} placeholder="값" style={{ flex: 1 }} />
+                <div className="form-group flex gap-1">
+                  <input value={row.value} onChange={(e) => updateExtraRow(i, "value", e.target.value)} placeholder="값" className="flex-1" />
                   <button className="btn-remove" onClick={() => removeExtraRow(i)}>✕</button>
                 </div>
               </div>
@@ -351,18 +351,18 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
               예상 견적
               <button className="btn-add" onClick={addCalcRow}>+ 행 추가</button>
             </div>
-            <div className="form-group" style={{ marginBottom: 8 }}>
+            <div className="form-group mb-2">
               <label>견적 타이틀</label>
               <input value={calcTitle} onChange={(e) => setCalcTitle(e.target.value)} />
             </div>
             {calcRows.map((row, i) => (
-              <div key={i} className="form-grid" style={{ marginBottom: 4 }}>
+              <div key={i} className="form-grid mb-1">
                 <div className="form-group">
                   <input value={row.label} onChange={(e) => updateCalcRow(i, "label", e.target.value)} placeholder="항목" />
                 </div>
-                <div className="form-group" style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  <input value={row.value} onChange={(e) => updateCalcRow(i, "value", e.target.value)} placeholder="금액" style={{ flex: 1 }} />
-                  <label className="checkbox-label" style={{ fontSize: 10, whiteSpace: "nowrap" }}>
+                <div className="form-group flex gap-1 items-center">
+                  <input value={row.value} onChange={(e) => updateCalcRow(i, "value", e.target.value)} placeholder="금액" className="flex-1" />
+                  <label className="checkbox-label !text-[10px] whitespace-nowrap">
                     <input type="checkbox" checked={row.isTotal || false} onChange={(e) => updateCalcRow(i, "isTotal", e.target.checked)} />
                     합계
                   </label>

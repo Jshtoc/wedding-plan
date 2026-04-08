@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import TwEmoji from "./ui/TwEmoji";
 
-export default function CopyButton({ address }: { address: string }) {
+interface Props {
+  address: string;
+}
+
+export default function CopyButton({ address }: Props) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -17,7 +22,15 @@ export default function CopyButton({ address }: { address: string }) {
       className={`copy-btn${copied ? " copied" : ""}`}
       onClick={handleCopy}
     >
-      {copied ? "✅ 복사 완료!" : "📋 주소 복사"}
+      {copied ? (
+        <>
+          <TwEmoji emoji="✅" size={14} /> 복사 완료!
+        </>
+      ) : (
+        <>
+          <TwEmoji emoji="📋" size={14} /> 주소 복사
+        </>
+      )}
     </button>
   );
 }

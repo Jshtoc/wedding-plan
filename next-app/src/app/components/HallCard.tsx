@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { WeddingHall } from "@/data/halls";
+import TwEmoji from "./ui/TwEmoji";
 
 interface Props {
   hall: WeddingHall;
@@ -56,7 +57,8 @@ export default function HallCard({ hall, onEdit, onDelete }: Props) {
         </div>
 
         <div className={`ktx-row${hall.ktxWarn ? " warn" : ""}`}>
-          {hall.ktxWarn ? "🚇" : "🚄"} <span>{hall.ktxText}</span>
+          <TwEmoji emoji={hall.ktxWarn ? "🚇" : "🚄"} size={16} />{" "}
+          <span>{hall.ktxText}</span>
         </div>
 
         <div className="badges">
@@ -102,16 +104,19 @@ export default function HallCard({ hall, onEdit, onDelete }: Props) {
         </div>
 
         <div
-          className={`note${hall.noteType ? ` ${hall.noteType}` : ""}`}
-          style={{ marginTop: 10 }}
+          className={`note mt-2.5${hall.noteType ? ` ${hall.noteType}` : ""}`}
         >
           {hall.note}
         </div>
       </div>
 
       <div className="card-actions">
-        <button onClick={() => onEdit(hall)}>✏️ 수정</button>
-        <button className="btn-delete" onClick={handleDelete}>🗑️ 삭제</button>
+        <button onClick={() => onEdit(hall)}>
+          <TwEmoji emoji="✏️" size={14} /> 수정
+        </button>
+        <button className="btn-delete" onClick={handleDelete}>
+          <TwEmoji emoji="🗑️" size={14} /> 삭제
+        </button>
       </div>
     </div>
   );
