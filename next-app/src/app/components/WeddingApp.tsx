@@ -17,12 +17,32 @@ export default function WeddingApp() {
   const [showModal, setShowModal] = useState(false);
   const [editingHall, setEditingHall] = useState<WeddingHall | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchHalls = useCallback(async () => {
-    const res = await fetch("/api/halls");
-    const data = await res.json();
-    setHalls(data);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/halls");
+      const data = await res.json();
+      if (!res.ok) {
+        const message =
+          (data && typeof data === "object" && "error" in data
+            ? String(data.error)
+            : null) || `요청 실패 (HTTP ${res.status})`;
+        setFetchError(message);
+        setHalls([]);
+      } else if (!Array.isArray(data)) {
+        setFetchError("서버가 예상치 못한 응답을 반환했습니다.");
+        setHalls([]);
+      } else {
+        setFetchError(null);
+        setHalls(data);
+      }
+    } catch (e: unknown) {
+      setFetchError(e instanceof Error ? e.message : "네트워크 오류");
+      setHalls([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -143,6 +163,15 @@ export default function WeddingApp() {
           {loading ? (
             <div className="text-center p-10 text-[var(--ink3)]">
               불러오는 중...
+            </div>
+          ) : fetchError ? (
+            <div className="mx-4 mb-4 p-4 bg-[var(--red-light)] border border-[var(--red)] rounded-[var(--radius)] text-[var(--red)] text-sm leading-relaxed">
+              <div className="font-medium mb-1">데이터를 불러오지 못했습니다</div>
+              <div className="text-xs opacity-80">{fetchError}</div>
+            </div>
+          ) : sortedHalls.length === 0 ? (
+            <div className="text-center p-10 text-[var(--ink3)]">
+              등록된 웨딩홀이 없습니다.
             </div>
           ) : (
             <div className="cards">
