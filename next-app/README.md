@@ -19,7 +19,8 @@
 - 전역 미들웨어로 **모든 페이지와 API가 로그인된 사용자에게만 노출**
 - HMAC-SHA256으로 서명된 httpOnly 쿠키 세션 (7일 유효)
 - Edge runtime 호환 — Web Crypto API만 사용
-- 기본 계정: `wed` / `1234` (super_admin)
+- 관리자 계정은 **환경 변수**에 bcrypt 해시로 저장 (평문 저장 금지)
+- 개발 모드에서는 환경 변수 미설정 시 `wed` / `1234` 기본값으로 fallback (경고 로그)
 
 ### Twemoji 기반 이모지 렌더링
 - 모든 이모지는 `TwEmoji` 컴포넌트를 통해 SVG로 렌더
@@ -43,7 +44,7 @@
 ```
 next-app/
 ├── src/
-│   ├── middleware.ts                   전역 인증 미들웨어 (Edge runtime)
+│   ├── proxy.ts                        전역 인증 proxy (Edge runtime, Next.js 16)
 │   ├── app/
 │   │   ├── layout.tsx                  루트 레이아웃
 │   │   ├── page.tsx                    메인 페이지
@@ -87,22 +88,49 @@ npm install
 
 ### 2. 환경 변수 설정
 
-프로젝트 루트에 `.env.local` 파일 생성:
+`.env.local.example`을 `.env.local`로 복사한 뒤 값을 채웁니다.
+
+```bash
+cp .env.local.example .env.local
+```
+
+`.env.local` 내용:
 
 ```bash
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# 세션 토큰 서명 키 (프로덕션 필수 — 랜덤 긴 문자열로 교체)
+# 세션 토큰 서명 키 (프로덕션 필수)
+#   openssl rand -base64 48  로 생성 추천
 AUTH_SECRET=change-me-to-a-long-random-string
+
+# 관리자 계정
+ADMIN_ID=wed
+ADMIN_PASSWORD_HASH=$2a$10$...    # 아래 3단계에서 생성
+ADMIN_ROLE=super_admin
 ```
+
+### 3. 관리자 비밀번호 해시 생성
+
+의존성 설치가 끝난 뒤(`npm install` 완료 상태) 아래 명령으로 bcrypt 해시를 생성합니다:
+
+```bash
+npm run hash-password -- "your-secure-password"
+```
+
+출력된 `$2a$10$...` 형태의 해시를 `.env.local`의 `ADMIN_PASSWORD_HASH=`에 그대로 붙여넣습니다.
 
 > **보안 주의**
 > - `AUTH_SECRET`을 기본값 그대로 프로덕션에 배포하지 마세요.
+> - `ADMIN_PASSWORD_HASH`는 bcrypt 해시만 저장합니다. **평문 비밀번호를 `.env.local`에 두면 안 됩니다.**
+> - `ADMIN_ID` / `ADMIN_PASSWORD_HASH`가 비어있으면:
+>   - **프로덕션**: 로그인이 거부됩니다 (fail closed).
+>   - **개발**: `wed` / `1234` 기본값으로 동작하며 콘솔에 경고가 찍힙니다.
 > - Supabase는 **anon key만** 사용합니다. `service_role` 키는 절대 `NEXT_PUBLIC_*`로 노출하지 마세요.
+> - `.env.local`은 git에 커밋하지 마세요. `.gitignore`에 포함되어 있어야 합니다.
 
-### 3. Supabase 테이블 생성
+### 4. Supabase 테이블 생성
 
 `halls` 테이블을 Supabase에 만들어 두어야 합니다. 주요 컬럼(snake_case):
 
@@ -131,18 +159,16 @@ note              text
 note_type         text
 ```
 
-### 4. 개발 서버 실행
+### 5. 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-http://localhost:3000 접속 → 자동으로 `/login`으로 리다이렉트 → 기본 계정 입력.
+http://localhost:3000 접속 → 자동으로 `/login`으로 리다이렉트 → 관리자 계정 입력.
 
-| 필드 | 값 |
-|---|---|
-| 아이디 | `wed` |
-| 비밀번호 | `1234` |
+- `.env.local`에 `ADMIN_ID` / `ADMIN_PASSWORD_HASH`를 설정했다면 → 해당 값으로 로그인
+- 설정하지 않았다면 (개발 모드 한정) → `wed` / `1234`로 로그인 (콘솔에 경고 로그)
 
 ## 🔐 인증 작동 방식
 
@@ -153,7 +179,7 @@ http://localhost:3000 접속 → 자동으로 `/login`으로 리다이렉트 →
          │
          ▼
 ┌──────────────────────┐
-│  middleware.ts (Edge)│
+│  proxy.ts (Edge)     │
 │                      │
 │  wp_auth 쿠키 검증   │
 │  HMAC 서명 확인      │

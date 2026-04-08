@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  AUTH_COOKIE,
-  SESSION_MAX_AGE_SEC,
-  createToken,
-  verifyCredentials,
-} from "@/lib/auth";
+import { AUTH_COOKIE, SESSION_MAX_AGE_SEC, createToken } from "@/lib/auth";
+import { verifyCredentials } from "@/lib/authUsers";
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, password } = await req.json();
+    const { id, password } = (await req.json()) as {
+      id?: string;
+      password?: string;
+    };
     if (typeof id !== "string" || typeof password !== "string") {
       return NextResponse.json(
         { error: "아이디와 비밀번호를 입력해주세요." },
@@ -16,7 +15,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = verifyCredentials(id, password);
+    const user = await verifyCredentials(id, password);
     if (!user) {
       return NextResponse.json(
         { error: "아이디 또는 비밀번호가 올바르지 않습니다." },

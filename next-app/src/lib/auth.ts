@@ -1,19 +1,11 @@
-// HMAC-signed session token utilities (Web Crypto, edge-compatible)
+// HMAC-signed session token utilities (Web Crypto, edge-compatible).
+// This module must stay Edge-runtime-safe because middleware.ts imports it.
+// Password verification lives in authUsers.ts (Node runtime only) to keep
+// bcryptjs out of the middleware bundle.
 
 export const AUTH_COOKIE = "wp_auth";
 const SECRET =
   process.env.AUTH_SECRET || "wedding-plan-dev-secret-please-change-in-prod";
-
-// Hardcoded user list
-export const USERS: { id: string; password: string; role: string }[] = [
-  { id: "wed", password: "1234", role: "super_admin" },
-];
-
-export function verifyCredentials(id: string, password: string) {
-  const user = USERS.find((u) => u.id === id && u.password === password);
-  if (!user) return null;
-  return { id: user.id, role: user.role };
-}
 
 async function getKey(): Promise<CryptoKey> {
   return crypto.subtle.importKey(

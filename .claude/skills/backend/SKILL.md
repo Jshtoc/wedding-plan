@@ -1,11 +1,11 @@
 ---
 name: backend
-description: Backend implementation rules and conventions for this Next.js App Router API routes + Supabase + middleware-based auth project. Use this skill whenever the user asks you to build, modify, refactor, review, or fix anything server-side — API endpoints under src/app/api/, database access via Supabase, authentication and session logic, middleware/cookie handling, route handlers, or any file under src/lib/. This covers creating new API routes, adding query functions, touching auth/login/logout/middleware, mapping DB rows to domain types, handling errors from Supabase, or anything that runs on the server rather than in the browser. Trigger this skill even when the user doesn't explicitly say "backend" — any task that involves src/app/api/, src/lib/, src/middleware.ts, HTTP request handling, database schemas, or cookies counts. Also trigger when the user describes a server problem in plain terms like "API에서 오류나", "로그인이 안 돼", "DB에서 가져와줘", "이 라우트 만들어줘".
+description: Backend implementation rules and conventions for this Next.js App Router API routes + Supabase + middleware-based auth project. Use this skill whenever the user asks you to build, modify, refactor, review, or fix anything server-side — API endpoints under src/app/api/, database access via Supabase, authentication and session logic, middleware/cookie handling, route handlers, or any file under src/lib/. This covers creating new API routes, adding query functions, touching auth/login/logout/middleware, mapping DB rows to domain types, handling errors from Supabase, or anything that runs on the server rather than in the browser. Trigger this skill even when the user doesn't explicitly say "backend" — any task that involves src/app/api/, src/lib/, src/proxy.ts, HTTP request handling, database schemas, or cookies counts. Also trigger when the user describes a server problem in plain terms like "API에서 오류나", "로그인이 안 돼", "DB에서 가져와줘", "이 라우트 만들어줘".
 ---
 
 # Backend Skill
 
-This skill encodes the rules, conventions, and decision-making patterns for backend work in this wedding-plan project. The backend is a Next.js App Router application with API routes under `src/app/api/`, a Supabase-backed database layer in `src/lib/db.ts`, HMAC-signed cookie auth in `src/lib/auth.ts`, and a global middleware at `src/middleware.ts` that protects every route except `/login` and `/api/auth/login`.
+This skill encodes the rules, conventions, and decision-making patterns for backend work in this wedding-plan project. The backend is a Next.js App Router application with API routes under `src/app/api/`, a Supabase-backed database layer in `src/lib/db.ts`, HMAC-signed cookie auth in `src/lib/auth.ts`, and a global middleware at `src/proxy.ts` that protects every route except `/login` and `/api/auth/login`.
 
 Before starting, also read `CLAUDE.md` at the project root — it is the authoritative source of project-wide rules, and this skill is a more detailed companion to it for server-side work.
 
@@ -14,9 +14,9 @@ For concrete code templates (route handlers, DB query helpers, auth/cookie setup
 ## Tech stack
 
 - **Next.js 16** App Router — API routes are `route.ts` files under `src/app/api/`.
-- **Runtime:** Node.js for API routes; Edge runtime for `middleware.ts` (Web Crypto only, no Node APIs).
+- **Runtime:** Node.js for API routes; Edge runtime for `proxy.ts` (Web Crypto only, no Node APIs).
 - **Database:** Supabase (`@supabase/supabase-js`) via a single client exported from `src/lib/supabase.ts`. Database access functions live in `src/lib/db.ts`.
-- **Auth:** HMAC-SHA256 signed session tokens stored in an httpOnly cookie (`wp_auth`). All auth utilities are in `src/lib/auth.ts`. Middleware at `src/middleware.ts` verifies the cookie on every request.
+- **Auth:** HMAC-SHA256 signed session tokens stored in an httpOnly cookie (`wp_auth`). All auth utilities are in `src/lib/auth.ts`. Middleware at `src/proxy.ts` verifies the cookie on every request.
 - **Env vars:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `AUTH_SECRET`.
 
 ## Directory layout
@@ -35,7 +35,7 @@ src/
 │   ├── supabase.ts                Single Supabase client
 │   ├── db.ts                      Typed query helpers (getHalls, createHall, ...)
 │   └── auth.ts                    Token sign/verify, user list, cookie name
-└── middleware.ts                  Edge middleware — enforces auth on all routes
+└── proxy.ts                  Edge middleware — enforces auth on all routes
 ```
 
 ## Core rules
@@ -131,19 +131,19 @@ export async function getHalls(): Promise<WeddingHall[]> {
 
 ### 4. Auth: cookie + middleware, not per-route checks
 
-**Rule:** Don't sprinkle auth checks into individual route handlers. The middleware at `src/middleware.ts` already enforces authentication on every route except `/login` and `/api/auth/login`. A route handler can assume a valid session exists.
+**Rule:** Don't sprinkle auth checks into individual route handlers. The middleware at `src/proxy.ts` already enforces authentication on every route except `/login` and `/api/auth/login`. A route handler can assume a valid session exists.
 
 **Why:** A single chokepoint is easier to reason about and to audit. Adding per-route checks invites bypasses when someone forgets.
 
 **Protected by default, exceptions listed explicitly:**
 ```ts
-// middleware.ts
+// proxy.ts
 const isPublic =
   pathname === "/login" ||
   pathname.startsWith("/api/auth/login");
 ```
 
-To make a new route public, add it to the `isPublic` condition in `middleware.ts`. To add role-based restrictions (e.g., admin-only), verify the token inside the route handler using `verifyToken` and check `payload.role`:
+To make a new route public, add it to the `isPublic` condition in `proxy.ts`. To add role-based restrictions (e.g., admin-only), verify the token inside the route handler using `verifyToken` and check `payload.role`:
 
 ```ts
 import { verifyToken, AUTH_COOKIE } from "@/lib/auth";
@@ -179,11 +179,11 @@ Clearing is the same, with `maxAge: 0` and empty value.
 
 ### 6. Middleware runs on the Edge — Web Crypto only
 
-**Rule:** Code imported by `src/middleware.ts` (transitively) cannot use Node-only APIs. Use Web Crypto (`crypto.subtle`) for signing/verifying, `TextEncoder`/`TextDecoder` for bytes, `btoa`/`atob` for base64.
+**Rule:** Code imported by `src/proxy.ts` (transitively) cannot use Node-only APIs. Use Web Crypto (`crypto.subtle`) for signing/verifying, `TextEncoder`/`TextDecoder` for bytes, `btoa`/`atob` for base64.
 
 **Why:** Next.js middleware runs in the Edge runtime, which does not expose Node's `crypto`, `fs`, `buffer`, etc. Importing those would crash at build or run time.
 
-**How to apply:** `src/lib/auth.ts` is the shared module between the login API (Node runtime) and the middleware (Edge runtime), so it only uses Web Crypto. If you need to add helpers that use Node-only APIs, keep them in a separate file and don't import that file from `middleware.ts`.
+**How to apply:** `src/lib/auth.ts` is the shared module between the login API (Node runtime) and the middleware (Edge runtime), so it only uses Web Crypto. If you need to add helpers that use Node-only APIs, keep them in a separate file and don't import that file from `proxy.ts`.
 
 ### 7. Dynamic route params in Next.js 16 are async
 
@@ -223,7 +223,7 @@ Before considering a backend change done, walk through this list:
 6. **Middleware handles auth by default** — don't duplicate in the route unless role-specific.
 7. **Cookies** are httpOnly + sameSite lax + secure in prod.
 8. **Dynamic params** (`[id]`) are awaited (`await params`) — Next.js 16 convention.
-9. **No Node-only imports** in any file transitively reachable from `middleware.ts`.
+9. **No Node-only imports** in any file transitively reachable from `proxy.ts`.
 10. **No secrets** in `NEXT_PUBLIC_*` env vars.
 11. **Only change what was asked** — don't drive-by refactor unrelated routes.
 
