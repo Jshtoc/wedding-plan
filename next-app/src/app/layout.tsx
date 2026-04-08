@@ -13,7 +13,15 @@ interface Props {
 export default function RootLayout({ children }: Props) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        {/* React 19 auto-hoists <link rel="stylesheet"> into <head>. */}
+        <link
+          rel="stylesheet"
+          precedence="default"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        />
+        {children}
+      </body>
     </html>
   );
 }

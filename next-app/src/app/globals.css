@@ -1,16 +1,8 @@
 @import "tailwindcss";
 
-/* Pretendard Variable via jsdelivr CDN.
-   Uses @font-face instead of @import url() to avoid CSS import-order
-   constraints (all @imports must precede other rules, but Tailwind v4's
-   expanded content would break that). */
-@font-face {
-  font-family: 'Pretendard Variable';
-  font-weight: 45 920;
-  font-style: normal;
-  font-display: swap;
-  src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');
-}
+/* Pretendard is loaded via a <link> in src/app/layout.tsx so that React 19
+   can hoist it into <head> automatically without violating CSS import-order
+   constraints. See layout.tsx. */
 
 @theme {
   --font-pretendard: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
