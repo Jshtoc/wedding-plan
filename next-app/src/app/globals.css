@@ -7,6 +7,7 @@
 @theme {
   --font-pretendard: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 
+  /* ─── Main app palette (warm, wedding theme) ────────── */
   --color-bg: #f7f4f0;
   --color-card: #ffffff;
   --color-ink: #1a1714;
@@ -21,6 +22,12 @@
   --color-amber: #b8721a;
   --color-amber-light: #fdf3e3;
   --color-border: #e8e2da;
+
+  /* ─── Auth / login page palette (3 colors) ──────────── */
+  /* Usage: bg-night / bg-royal / bg-mint / text-mint / border-royal ... */
+  --color-night: #1a1140;   /* darkest purple — background base */
+  --color-royal: #3a2370;   /* mid purple — card surface, gradient */
+  --color-mint:  #8ee5d5;   /* mint — accent button, focus rings */
 
   --radius-card: 16px;
 }
