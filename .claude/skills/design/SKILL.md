@@ -41,25 +41,25 @@ Used for: the main app (`/`, halls list, route timeline, modals, forms after log
 | `text-red` | `#c0392b` | error / over-budget |
 | `border-border` | `#e8e2da` | default border |
 
-### Auth palette (dark, login page only)
-Used for: the `/login` page. Cool, moody, sets it apart from the main app.
+### Auth palette (light, login page only)
+Used for: the `/login` page. A minimal, clean, light theme that's distinct from the warm main app while still feeling calm and modern.
 
 | Token | Hex | Role |
 |---|---|---|
-| `bg-night` | `#1a1140` | darkest purple, background base |
-| `bg-royal` | `#3a2370` | mid purple, card surface / gradient |
-| `bg-mint` | `#8ee5d5` | mint, accent button & focus ring |
+| `bg-sapphire` | `#4f46e5` | indigo — primary CTA button |
+| `text-jade` | `#0d9488` | teal — form labels, accents |
+| `border-pearl` | `#e5e7eb` | light gray — input borders, dividers |
 
-Plus white-with-opacity overlays (`text-white/50`, `bg-white/[0.06]`, `border-white/10`) for all the intermediate surfaces on the dark background.
+The surrounding neutrals use Tailwind's default `gray-*` scale (`text-gray-900` for body, `text-gray-500` for captions, `text-gray-400` for placeholders, `bg-[#f5f5f7]` for the page background).
 
 **When to use which**:
-- Login page → auth palette only
-- Every other page (home, modals, forms, card grids) → main palette only
-- Don't mix. If you need a neutral dark accent on a main-palette page, use `text-ink` — not `text-night`.
+- Login page → auth palette only (sapphire / jade / pearl + gray neutrals)
+- Every other page (home, modals, forms, card grids) → main palette only (gold / ink / warm neutrals)
+- Don't mix. If you need a primary action color on a main-palette page, use `bg-ink` or `bg-gold` — not `bg-sapphire`.
 
 ## Design tokens (Tailwind v4 custom)
 
-All colors, fonts, and the card radius are defined as `@theme` tokens in `src/app/globals.css`. Tailwind v4 auto-generates utilities from them, so you write `bg-gold` instead of `bg-[var(--gold)]` and `text-mint` instead of `text-[#8ee5d5]`.
+All colors, fonts, and the card radius are defined as `@theme` tokens in `src/app/globals.css`. Tailwind v4 auto-generates utilities from them, so you write `bg-gold` instead of `bg-[var(--gold)]` and `bg-sapphire` instead of `bg-[#4f46e5]`.
 
 **Use the token utilities first.** Fall back to arbitrary `bg-[var(--...)]` only for the legacy `:root` variables that still exist for the globals.css CSS classes (e.g. `border-[var(--border)]` works too but `border-border` is preferred in new code).
 
@@ -112,7 +112,7 @@ Four defined levels, ordered by depth. Pick the one that matches the element's r
 3. **Prominent** `shadow-[0_12px_40px_-12px_rgba(26,23,20,0.15)]`: floating cards, callouts
 4. **Modal / overlay** `shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)]` or `shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]` for the auth card
 
-For glowing / accent buttons (especially the mint auth button), pair a soft brand-color shadow: `shadow-[0_8px_24px_-8px_rgba(142,229,213,0.5)]`.
+For primary CTA buttons, pair a soft brand-colored shadow to lift them off the surface — e.g. the sapphire auth button uses `shadow-[0_4px_16px_-4px_rgba(79,70,229,0.35)]`.
 
 ## Interaction states
 
@@ -120,7 +120,7 @@ Every interactive element needs all four states:
 
 - **Rest**: the default look
 - **Hover**: subtle brightness/opacity change (skip on touch devices — they don't hover)
-- **Focus**: clear border color change to the accent (`focus:border-gold` or `focus:border-mint/60`), plus `focus:outline-none`
+- **Focus**: clear border color change to the accent (`focus:border-gold` for main palette, `focus:border-sapphire focus:ring-4 focus:ring-sapphire/10` for auth palette), plus `focus:outline-none`
 - **Active**: `active:scale-[0.98]` for buttons, slight feedback
 - **Disabled** (when applicable): `disabled:opacity-60 disabled:cursor-not-allowed`
 
@@ -151,14 +151,14 @@ All emojis go through the `TwEmoji` component (see frontend skill). The `size` p
 See `convention.md` for the full code snippets. Short version:
 
 - **Primary button (warm bg)**: `bg-ink text-white rounded-xl h-12 font-medium` + interaction states
-- **Primary button (auth bg)**: `bg-mint text-night rounded-xl h-12 font-semibold` + shadow glow + interaction states
-- **Ghost button on dark**: `bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-[11px]`
+- **Primary button (auth bg)**: `bg-sapphire text-white rounded-2xl h-14 font-semibold` + soft sapphire shadow + interaction states
+- **Ghost button on warm dark header**: `bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-[11px]`
 - **Input (warm)**: `h-12 px-4 text-base bg-bg border border-border rounded-xl` + focus states
-- **Input (auth)**: `h-12 pl-4 pr-12 text-base bg-white/[0.04] border border-white/15 rounded-xl` + focus states
+- **Input (auth)**: `h-14 px-5 text-base bg-white border border-pearl rounded-2xl` + `focus:border-sapphire focus:ring-4 focus:ring-sapphire/10`
 - **Card (warm)**: use the `.card` class from globals.css, or `bg-card border border-border rounded-[var(--radius)] p-6`
-- **Card (auth/glass)**: `bg-royal/30 backdrop-blur-2xl border border-white/10 rounded-[28px] p-8 sm:p-10`
+- **Card (auth)**: `bg-white border border-pearl/70 rounded-3xl p-8 sm:p-10 shadow-[0_2px_24px_rgba(15,23,42,0.04)]`
 - **Error box (warm)**: `bg-red-light text-red border border-red/20 px-3.5 py-3 rounded-xl text-[13px]`
-- **Error box (auth)**: `bg-rose-500/10 text-rose-200 border border-rose-400/20 px-4 py-3 rounded-xl text-[13px]`
+- **Error box (auth)**: `bg-red-50 text-red-600 border border-red-200 px-4 py-3 rounded-xl text-[13px]`
 
 ## Adding a token
 
@@ -178,7 +178,7 @@ Before calling a visual task done, walk through this list:
 
 1. **Read this skill and `convention.md`** if you haven't this session.
 2. **Pick palette** — main or auth. Don't mix.
-3. **Use tokens**, not raw hex. `bg-mint`, not `bg-[#8ee5d5]`.
+3. **Use tokens**, not raw hex. `bg-sapphire`, not `bg-[#4f46e5]`.
 4. **Use spacing from the scale**, not random pixel values.
 5. **Interactive elements** have hover / focus / active / disabled states.
 6. **Touch targets** ≥ 44px on mobile.

@@ -11,7 +11,6 @@ function LoginForm() {
 
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -40,43 +39,21 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-night via-royal to-night relative overflow-hidden flex items-center justify-center px-5 py-12">
-      {/* Decorative background blobs */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 -left-40 w-[28rem] h-[28rem] rounded-full bg-mint/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-40 -right-32 w-[32rem] h-[32rem] rounded-full bg-royal/60 blur-3xl"
-      />
-
-      {/* ── Form card ── */}
+    <div className="min-h-[100dvh] bg-[#f5f5f7] flex items-center justify-center px-5 py-12">
       <form
         onSubmit={onSubmit}
-        className="relative w-full max-w-md bg-royal/30 backdrop-blur-2xl border border-white/10 rounded-[28px] p-8 sm:p-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]"
+        className="w-full max-w-[420px] bg-white rounded-3xl p-8 sm:p-10 border border-pearl/70 shadow-[0_2px_24px_rgba(15,23,42,0.04)]"
       >
-        {/* Brand orb */}
-        <div className="flex justify-center mb-7">
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-full bg-mint/25 blur-xl"
-            />
-            <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-[0_16px_40px_-12px_rgba(142,229,213,0.5)]">
-              <TwEmoji emoji="💍" size={36} />
-            </div>
+        {/* Brand */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-sapphire/10 mb-4">
+            <TwEmoji emoji="💍" size={28} />
           </div>
-        </div>
-
-        {/* Title */}
-        <div className="text-center mb-9">
-          <div className="text-[10px] font-semibold text-mint/70 tracking-[0.3em] uppercase mb-2.5">
-            Wedding Plan
-          </div>
-          <h1 className="text-2xl font-semibold text-white mb-2">로그인</h1>
-          <p className="text-[13px] text-white/50 leading-relaxed">
-            지정된 두 계정으로만 입장할 수 있습니다
+          <h1 className="text-[19px] font-semibold text-gray-900 mb-1.5 tracking-tight">
+            웨딩홀 비교 리스트
+          </h1>
+          <p className="text-[13px] text-gray-500">
+            로그인하고 계속하기
           </p>
         </div>
 
@@ -84,62 +61,44 @@ function LoginForm() {
         <div className="mb-6">
           <label
             htmlFor="login-id"
-            className="block text-[11px] font-medium text-white/70 mb-2.5 tracking-wide"
+            className="block text-sm font-semibold text-jade mb-2.5"
           >
             아이디
           </label>
-          <div className="relative">
-            <input
-              id="login-id"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              autoComplete="username"
-              placeholder="wed1 또는 wed2"
-              required
-              className="w-full h-12 pl-4 pr-12 text-base bg-white/[0.04] border border-white/15 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-mint/60 focus:bg-white/[0.08] transition-colors"
-            />
-            <div
-              aria-hidden
-              className="absolute inset-y-0 right-3 flex items-center pointer-events-none opacity-50"
-            >
-              <TwEmoji emoji="👤" size={18} />
-            </div>
-          </div>
+          <input
+            id="login-id"
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            autoComplete="username"
+            placeholder="wed1 또는 wed2"
+            required
+            className="w-full h-14 px-5 text-base bg-white border border-pearl rounded-2xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-sapphire focus:ring-4 focus:ring-sapphire/10 transition-all"
+          />
         </div>
 
         {/* Password */}
         <div className="mb-8">
           <label
             htmlFor="login-password"
-            className="block text-[11px] font-medium text-white/70 mb-2.5 tracking-wide"
+            className="block text-sm font-semibold text-jade mb-2.5"
           >
             비밀번호
           </label>
-          <div className="relative">
-            <input
-              id="login-password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              required
-              className="w-full h-12 pl-4 pr-12 text-base bg-white/[0.04] border border-white/15 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-mint/60 focus:bg-white/[0.08] transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
-              className="absolute inset-y-0 right-2 flex items-center px-2 opacity-60 hover:opacity-100 transition-opacity"
-            >
-              <TwEmoji emoji={showPassword ? "🙈" : "👁️"} size={18} />
-            </button>
-          </div>
+          <input
+            id="login-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            placeholder="••••••••"
+            required
+            className="w-full h-14 px-5 text-base bg-white border border-pearl rounded-2xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-sapphire focus:ring-4 focus:ring-sapphire/10 transition-all"
+          />
         </div>
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-2 text-[13px] text-rose-200 bg-rose-500/10 border border-rose-400/20 px-4 py-3 rounded-xl mb-6">
+          <div className="flex items-start gap-2 text-[13px] text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl mb-5">
             <TwEmoji
               emoji="⚠️"
               size={14}
@@ -153,11 +112,11 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-12 bg-mint text-night rounded-xl text-base font-semibold tracking-tight transition-all hover:bg-mint/90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(142,229,213,0.5)]"
+          className="w-full h-14 bg-sapphire text-white rounded-2xl text-base font-semibold tracking-tight transition-all hover:bg-sapphire/90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_16px_-4px_rgba(79,70,229,0.35)]"
         >
           {loading ? (
             <>
-              <span className="w-4 h-4 border-2 border-night/30 border-t-night rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               로그인 중...
             </>
           ) : (
@@ -166,12 +125,12 @@ function LoginForm() {
         </button>
 
         {/* Hint */}
-        <div className="mt-8 pt-6 border-t border-white/10 text-center">
-          <p className="text-[11px] text-white/40 leading-relaxed">
+        <div className="mt-8 pt-6 border-t border-pearl text-center">
+          <p className="text-[11px] text-gray-400 leading-relaxed">
             사용 가능한 계정
           </p>
-          <p className="text-[12px] text-white/70 font-medium mt-1.5 tracking-wide">
-            wed1 <span className="text-white/30 mx-1.5">·</span> wed2
+          <p className="text-[13px] font-medium text-gray-700 mt-1.5 tracking-wide">
+            wed1 <span className="text-gray-300 mx-1.5">·</span> wed2
           </p>
         </div>
       </form>

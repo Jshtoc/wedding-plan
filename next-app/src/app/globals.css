@@ -24,10 +24,12 @@
   --color-border: #e8e2da;
 
   /* ─── Auth / login page palette (3 colors) ──────────── */
-  /* Usage: bg-night / bg-royal / bg-mint / text-mint / border-royal ... */
-  --color-night: #1a1140;   /* darkest purple — background base */
-  --color-royal: #3a2370;   /* mid purple — card surface, gradient */
-  --color-mint:  #8ee5d5;   /* mint — accent button, focus rings */
+  /* Usage: bg-sapphire / text-jade / border-pearl ...
+     Light minimal theme for the login flow. Do not mix with the main
+     warm palette on the same page. */
+  --color-sapphire: #4f46e5;  /* indigo — primary CTA button */
+  --color-jade:     #0d9488;  /* teal  — labels, accents */
+  --color-pearl:    #e5e7eb;  /* light gray — input borders, dividers */
 
   --radius-card: 16px;
 }
