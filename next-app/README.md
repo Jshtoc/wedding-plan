@@ -225,7 +225,7 @@ AI 페어 프로그래밍 시 참고할 더 상세한 컨벤션은 `.claude/skil
 - Payload: `{ id, role, exp }` — 필요한 것만
 
 ### 왜 Twemoji?
-Korean 환경(Windows + Chrome)에서 일부 이모지가 흑백으로 표시되거나 다른 글리프로 fallback되는 문제를 피하고, 모든 플랫폼에서 동일한 룩을 보장하기 위함입니다.
+Korean 환경(Windows + Chrome)에서 일부 이모지가 흑백으로 표시되거나 다른 글리프로 fallback되는 문제를 피하고, 모든 플랫폼에서 동일한 룩을 보장하기 위함.
 
 ### 왜 Tailwind v4 + 커스텀 CSS 혼용?
 - 카드/뱃지/타임라인 같은 프로젝트 고유 시각 정체성은 `globals.css`의 네임드 클래스로 관리 (DRY)
