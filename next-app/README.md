@@ -232,6 +232,3 @@ Korean 환경(Windows + Chrome)에서 일부 이모지가 흑백으로 표시되
 - 일회성 spacing/layout은 Tailwind 유틸리티로
 - 색상 토큰은 `@theme` 블록 + `var(--...)` arbitrary value로 양쪽에서 접근 가능
 
-## 📜 라이선스
-
-개인 프로젝트 — 라이선스 미정.
