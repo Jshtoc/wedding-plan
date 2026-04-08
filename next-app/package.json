@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "hash-password": "node scripts/hash-password.mjs"
+    "hash-password": "node scripts/hash-password.mjs",
+    "seed-halls": "node scripts/seed-halls.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.102.1",
