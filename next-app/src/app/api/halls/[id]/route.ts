@@ -3,12 +3,12 @@ import { updateHall, deleteHall } from "@/lib/db";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
     const body = await req.json();
-    const hall = await updateHall(id, body);
+    const hall = await updateHall(Number(id), body);
     return NextResponse.json(hall);
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
@@ -18,11 +18,11 @@ export async function PUT(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
-    await deleteHall(id);
+    const { id } = await params;
+    await deleteHall(Number(id));
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
