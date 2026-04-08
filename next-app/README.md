@@ -16,11 +16,11 @@
 - 이동 시간·거리 요약 + 투어 팁
 
 ### 인증 / 접근 제어
-- 전역 미들웨어로 **모든 페이지와 API가 로그인된 사용자에게만 노출**
+- 전역 proxy(Edge middleware)로 **모든 페이지와 API가 로그인된 사용자에게만 노출**
 - HMAC-SHA256으로 서명된 httpOnly 쿠키 세션 (7일 유효)
 - Edge runtime 호환 — Web Crypto API만 사용
-- 관리자 계정은 **환경 변수**에 bcrypt 해시로 저장 (평문 저장 금지)
-- 개발 모드에서는 환경 변수 미설정 시 `wed` / `1234` 기본값으로 fallback (경고 로그)
+- **고정 두 계정** (남편 `wed1` + 아내 `wed2`) — 환경 변수에 bcrypt 해시로 저장 (평문 저장 금지)
+- 개발 모드에서는 환경 변수 미설정 시 `wed1` / `wed1234`, `wed2` / `wed1234` 기본값으로 fallback (경고 로그)
 
 ### Twemoji 기반 이모지 렌더링
 - 모든 이모지는 `TwEmoji` 컴포넌트를 통해 SVG로 렌더
@@ -105,28 +105,34 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 #   openssl rand -base64 48  로 생성 추천
 AUTH_SECRET=change-me-to-a-long-random-string
 
-# 관리자 계정
-ADMIN_ID=wed
-ADMIN_PASSWORD_HASH=$2a$10$...    # 아래 3단계에서 생성
-ADMIN_ROLE=super_admin
+# 고정 계정 — 정확히 두 명 (남편 + 아내)
+# 비밀번호 해시는 다음 단계에서 생성 → 여기에 붙여넣기
+USER1_ID=wed1
+USER1_PASSWORD_HASH=$2a$10$...
+USER1_ROLE=husband
+
+USER2_ID=wed2
+USER2_PASSWORD_HASH=$2a$10$...
+USER2_ROLE=wife
 ```
 
-### 3. 관리자 비밀번호 해시 생성
+### 3. 비밀번호 해시 생성
 
-의존성 설치가 끝난 뒤(`npm install` 완료 상태) 아래 명령으로 bcrypt 해시를 생성합니다:
+의존성 설치가 끝난 뒤(`npm install` 완료 상태) 아래 명령으로 각 계정의 bcrypt 해시를 생성합니다:
 
 ```bash
-npm run hash-password -- "your-secure-password"
+npm run hash-password -- "husband-password"   # USER1_PASSWORD_HASH 에 붙여넣기
+npm run hash-password -- "wife-password"      # USER2_PASSWORD_HASH 에 붙여넣기
 ```
 
-출력된 `$2a$10$...` 형태의 해시를 `.env.local`의 `ADMIN_PASSWORD_HASH=`에 그대로 붙여넣습니다.
+두 계정 모두 같은 비밀번호를 써도 무방합니다 — bcrypt는 각각 다른 salt로 다른 해시를 만들어냅니다.
 
 > **보안 주의**
 > - `AUTH_SECRET`을 기본값 그대로 프로덕션에 배포하지 마세요.
-> - `ADMIN_PASSWORD_HASH`는 bcrypt 해시만 저장합니다. **평문 비밀번호를 `.env.local`에 두면 안 됩니다.**
-> - `ADMIN_ID` / `ADMIN_PASSWORD_HASH`가 비어있으면:
+> - `USER*_PASSWORD_HASH`는 bcrypt 해시만 저장합니다. **평문 비밀번호를 `.env.local`에 두면 안 됩니다.**
+> - `USER1_ID` / `USER1_PASSWORD_HASH`가 비어있으면:
 >   - **프로덕션**: 로그인이 거부됩니다 (fail closed).
->   - **개발**: `wed` / `1234` 기본값으로 동작하며 콘솔에 경고가 찍힙니다.
+>   - **개발**: `wed1` / `wed1234` · `wed2` / `wed1234` 기본값으로 동작하며 콘솔에 경고가 찍힙니다.
 > - Supabase는 **anon key만** 사용합니다. `service_role` 키는 절대 `NEXT_PUBLIC_*`로 노출하지 마세요.
 > - `.env.local`은 git에 커밋하지 마세요. `.gitignore`에 포함되어 있어야 합니다.
 
@@ -165,10 +171,10 @@ note_type         text
 npm run dev
 ```
 
-http://localhost:3000 접속 → 자동으로 `/login`으로 리다이렉트 → 관리자 계정 입력.
+http://localhost:3000 접속 → 자동으로 `/login`으로 리다이렉트 → 두 계정 중 하나로 로그인.
 
-- `.env.local`에 `ADMIN_ID` / `ADMIN_PASSWORD_HASH`를 설정했다면 → 해당 값으로 로그인
-- 설정하지 않았다면 (개발 모드 한정) → `wed` / `1234`로 로그인 (콘솔에 경고 로그)
+- `.env.local`에 `USER*_ID` / `USER*_PASSWORD_HASH`를 설정했다면 → 해당 값으로 로그인
+- 설정하지 않았다면 (개발 모드 한정) → `wed1` / `wed1234` 또는 `wed2` / `wed1234`로 로그인 (콘솔에 경고 로그)
 
 ## 🔐 인증 작동 방식
 

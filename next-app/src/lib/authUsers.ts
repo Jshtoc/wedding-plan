@@ -1,5 +1,5 @@
 // Password verification layer — Node runtime only.
-// Not imported by middleware (which runs on Edge), so bcryptjs is safe here.
+// Not imported by the Edge proxy (src/proxy.ts), so bcryptjs is safe here.
 
 import bcrypt from "bcryptjs";
 
@@ -8,47 +8,84 @@ export interface AuthUser {
   role: string;
 }
 
+interface UserEntry {
+  id: string;
+  hash: string;
+  role: string;
+}
+
 /**
- * Verify a (id, password) pair against the credentials stored in env vars.
+ * Load the fixed list of users from environment variables.
  *
- * Env vars (production):
- *   ADMIN_ID            — the admin login id
- *   ADMIN_PASSWORD_HASH — bcrypt hash of the password (use scripts/hash-password.mjs)
- *   ADMIN_ROLE          — optional, defaults to "super_admin"
+ * This project has exactly two accounts (husband + wife), configured via:
+ *   USER1_ID, USER1_PASSWORD_HASH, USER1_ROLE   → husband
+ *   USER2_ID, USER2_PASSWORD_HASH, USER2_ROLE   → wife
+ *
+ * Roles default to "husband" and "wife" if not set. Add more USER3_*, USER4_*
+ * here if you ever need additional fixed accounts.
+ */
+function loadUsers(): UserEntry[] {
+  const users: UserEntry[] = [];
+
+  const u1Id = process.env.USER1_ID;
+  const u1Hash = process.env.USER1_PASSWORD_HASH;
+  if (u1Id && u1Hash) {
+    users.push({
+      id: u1Id,
+      hash: u1Hash,
+      role: process.env.USER1_ROLE || "husband",
+    });
+  }
+
+  const u2Id = process.env.USER2_ID;
+  const u2Hash = process.env.USER2_PASSWORD_HASH;
+  if (u2Id && u2Hash) {
+    users.push({
+      id: u2Id,
+      hash: u2Hash,
+      role: process.env.USER2_ROLE || "wife",
+    });
+  }
+
+  return users;
+}
+
+/**
+ * Verify (id, password) against the configured users.
  *
  * Dev fallback:
- *   If ADMIN_ID or ADMIN_PASSWORD_HASH is missing AND NODE_ENV !== "production",
- *   accepts a hardcoded dev default (wed / 1234) with a console warning. This
- *   keeps first-run developer experience smooth while failing closed in prod.
+ *   If no USER*_ID / USER*_PASSWORD_HASH is set AND NODE_ENV !== "production",
+ *   accepts wed1 or wed2 with password "wed1234" so local `npm run dev` works
+ *   without any setup. In production this returns null (fail closed).
  */
 export async function verifyCredentials(
   id: string,
   password: string
 ): Promise<AuthUser | null> {
-  const adminId = process.env.ADMIN_ID;
-  const adminHash = process.env.ADMIN_PASSWORD_HASH;
-  const adminRole = process.env.ADMIN_ROLE || "super_admin";
+  const users = loadUsers();
 
-  if (!adminId || !adminHash) {
+  if (users.length === 0) {
     if (process.env.NODE_ENV === "production") {
       console.error(
-        "[auth] ADMIN_ID or ADMIN_PASSWORD_HASH not set in production. Refusing login."
+        "[auth] No USER*_ID / USER*_PASSWORD_HASH configured in production. Refusing login."
       );
       return null;
     }
     console.warn(
-      "[auth] Using insecure dev default credentials (wed / 1234). Set ADMIN_ID and ADMIN_PASSWORD_HASH in .env.local before deploying."
+      "[auth] No users configured. Using dev defaults — wed1 / wed1234 (husband) and wed2 / wed1234 (wife)."
     );
-    if (id === "wed" && password === "1234") {
-      return { id: "wed", role: "super_admin" };
+    if (password === "wed1234") {
+      if (id === "wed1") return { id: "wed1", role: "husband" };
+      if (id === "wed2") return { id: "wed2", role: "wife" };
     }
     return null;
   }
 
-  if (id !== adminId) return null;
+  const user = users.find((u) => u.id === id);
+  if (!user) return null;
 
-  const ok = await bcrypt.compare(password, adminHash);
+  const ok = await bcrypt.compare(password, user.hash);
   if (!ok) return null;
 
-  return { id: adminId, role: adminRole };
+  return { id: user.id, role: user.role };
 }
