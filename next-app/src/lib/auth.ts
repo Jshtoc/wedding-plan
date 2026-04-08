@@ -24,11 +24,15 @@ function b64urlEncode(bytes: ArrayBuffer | Uint8Array): string {
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function b64urlDecode(s: string): Uint8Array {
+// Returns Uint8Array<ArrayBuffer> explicitly — TypeScript 5.7+ narrowed
+// Uint8Array's generic so the default Uint8Array<ArrayBufferLike> is no longer
+// assignable to BufferSource (which Web Crypto's verify/sign expects).
+function b64urlDecode(s: string): Uint8Array<ArrayBuffer> {
   const pad = "=".repeat((4 - (s.length % 4)) % 4);
   const base64 = (s + pad).replace(/-/g, "+").replace(/_/g, "/");
   const bin = atob(base64);
-  const arr = new Uint8Array(bin.length);
+  const buffer = new ArrayBuffer(bin.length);
+  const arr = new Uint8Array(buffer);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return arr;
 }
