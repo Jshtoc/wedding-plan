@@ -4,12 +4,17 @@
 
 프로젝트 전용 Skill이 `.claude/skills/` 아래에 정의되어 있습니다. 작업 성격에 맞는 skill과 그 convention 문서를 **반드시** 먼저 읽으세요.
 
-- **`frontend`** — UI/JSX/TSX/스타일/컴포넌트 관련 모든 작업
+- **`frontend`** — UI/JSX/TSX/스타일/컴포넌트 관련 모든 코드 작업
   - `.claude/skills/frontend/SKILL.md` — 규칙과 원칙 (무엇을/왜)
   - `.claude/skills/frontend/convention.md` — 코드 템플릿과 구체 패턴 (어떻게)
+- **`design`** — 색상/여백/타이포/radius/shadow/컴포넌트 외관 등 모든 시각 디자인 작업
+  - `.claude/skills/design/SKILL.md` — 디자인 원칙과 팔레트 (무엇을/왜)
+  - `.claude/skills/design/convention.md` — 토큰 값, 스케일, 컴포넌트 패턴, do/don't (어떻게)
 - **`backend`** — API 라우트/Supabase/미들웨어/인증/`src/lib/` 작업
   - `.claude/skills/backend/SKILL.md` — 규칙과 원칙 (무엇을/왜)
   - `.claude/skills/backend/convention.md` — 코드 템플릿과 구체 패턴 (어떻게)
+
+**UI 작업은 보통 `frontend` + `design` 두 skill을 함께 참조하세요.** frontend는 "코드가 맞나", design은 "모양이 맞나"를 담당합니다.
 
 ## 절대 규칙
 
