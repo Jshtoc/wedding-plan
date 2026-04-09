@@ -122,3 +122,100 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 3. 비즈니스 로직이 포함되지 않은 순수 UI 컴포넌트다
 
 추출 후 반드시 이 문서의 **컴포넌트 목록**을 업데이트하세요.
+
+---
+
+## 현재 구현 상태 (2026-04-09 기준)
+
+### 완료
+- **인증**: 2인 고정 계정 (`wed1`/`wed2`), bcrypt 해시, HMAC 쿠키 세션, Edge proxy 전역 보호
+- **로그인 페이지**: Aceternity 스타일 오로라 배경 + 투명 글라스 카드 (민트/그린 팔레트)
+- **대시보드 shell**: 좌측 사이드바 (데스크톱) / 햄버거 드로어 (모바일), 7개 섹션
+- **Overview 섹션**: 상태 카드 + 월 캘린더 + 다가오는 일정 + 예산 도넛 차트
+- **웨딩홀 CRUD**: Supabase `halls` 테이블, 다크 카드 그리드, 정렬, 수정/삭제, FAB 추가
+- **웨딩홀 URL 자동 채움**: `/api/fetch-preview` — OG/Twitter meta 파싱
+- **결혼 예산**: Supabase `budgets` 테이블, 5개 카테고리 편집 + 도넛 차트 + 진행 바
+- **실시간 동기화**: Supabase Realtime으로 `halls` + `budgets` 양방향 sync, 편집 중 충돌 머지
+- **WWP 브랜드 자산**: favicon, apple-icon, 로고 SVG, OpenGraph/Twitter 카드
+- **Pretendard 폰트** (React 19 link hoisting)
+- **`.env.local`의 `$` escape 규칙** (backend skill convention에 문서화)
+
+### 진행 중 / Stub 상태
+- **스튜디오 · 드레스 · 메이크업** 섹션 — EmptyState placeholder만 존재, 데이터 모델 미구현
+- **동선 계산** — EmptyState placeholder, 기존 `RouteTab`은 legacy (미사용)
+- **캘린더 이벤트** — `SAMPLE_EVENTS` 하드코딩 (OverviewSection.tsx 상단). DB 미연동
+- **HallFormModal** — 여전히 warm 테마. 다른 섹션은 다크인데 모달만 흰색
+
+### Legacy / 삭제 후보
+- `src/app/components/HallCard.tsx` — warm 테마 기존 구현, `WeddingApp.tsx`에서 더 이상 import 안 함
+- `src/app/components/RouteTab.tsx` — warm 테마 기존 투어 동선, 미사용
+- `src/app/components/CopyButton.tsx` — RouteTab 전용, 미사용
+- 삭제 전에 사용처 재확인 (`grep -r "HallCard\|RouteTab\|CopyButton" src/` 로 확인)
+
+---
+
+## 다음 세션 작업 우선순위
+
+이 목록은 다음 세션에서 이어서 할 수 있는 작업을 우선순위 순으로 정리한 것입니다. 각 항목은 독립적이라 원하는 것부터 골라 진행할 수 있습니다.
+
+### 1. HallFormModal 다크 테마 리디자인
+- 이유: 현재 앱 전체가 다크 오로라 톤인데 웨딩홀 등록/수정 모달만 warm (흰색 배경 + cream). 시각적으로 튐
+- 작업 규모: 중간 (300줄 정도 리스타일). `design/convention.md`의 다크 폼 패턴 참조
+- 연관 파일: `src/app/components/HallFormModal.tsx`, `globals.css`의 `.modal-*`, `.form-*` 클래스
+- 접근: Tailwind 다크 유틸리티로 교체하고 warm 클래스는 남기되 사용만 안 하는 방식
+
+### 2. events 테이블 + 캘린더 CRUD
+- 이유: 현재 `OverviewSection.tsx`의 `SAMPLE_EVENTS`는 하드코딩. DB화하면 양 사용자가 일정 추가/편집 가능
+- 작업 규모: 중간
+- 필요 작업:
+  - `supabase/events.sql` 테이블 스키마 (id, date, title, type, time, location, memo, created_at)
+  - `src/data/events.ts` 타입 이동
+  - `src/lib/db.ts` — `getEvents`, `createEvent`, `updateEvent`, `deleteEvent`
+  - `src/app/api/events/route.ts` + `[id]/route.ts`
+  - `EventFormModal` 컴포넌트 (다크 테마)
+  - `OverviewSection`에서 fetch로 전환
+  - Realtime publication에 `events` 추가 (`supabase/realtime.sql`에 ALTER PUBLICATION 한 줄)
+  - WeddingApp의 realtime 구독 채널에 events 리스너 추가
+
+### 3. 스튜디오 · 드레스 · 메이크업 실제 CRUD
+- 이유: 사이드바 메뉴는 있지만 모두 placeholder
+- 작업 규모: 크게 — 세 섹션이 비슷한 패턴이라 공통화하면 줄어듦
+- 전략:
+  - 데이터 구조가 halls와 비슷해서 **제네릭 섹션 패턴** 추출을 먼저 해볼 것
+  - 예: `<CategoryListSection entity="studio">` 같이 props로 카테고리 받는 단일 컴포넌트
+  - 또는 세 섹션을 halls의 복사본으로 시작해서 개별 진화
+  - 드레스는 신랑/신부 sub-tab 구조 유지 필요
+- 필요 작업 (각 카테고리당):
+  - Supabase 테이블 스키마
+  - 타입 정의 (`src/data/studios.ts` 등)
+  - db.ts 함수들
+  - API 라우트
+  - 섹션 컴포넌트 (카드 그리드 + 정렬 + FAB)
+  - 폼 모달 (다크 테마로 — 1번 작업 완료 후 진행하면 재사용 가능)
+  - Realtime publication 등록
+
+### 4. 동선 계산 실 구현
+- 이유: 선택된 웨딩홀/스튜디오/드레스/메이크업을 기반으로 하루 투어 경로 제안
+- 작업 규모: 크게 (API 선택에 따라 변동)
+- 옵션:
+  - **Kakao Map REST API** — 한국에 특화, 무료 티어 있음, 경로/거리/시간 제공
+  - **Google Maps Directions API** — 더 정확하지만 결제 카드 필요
+  - **간단 구현**: 하드코딩된 위도/경도 + Haversine 거리 공식, 시간 없이 거리만
+- 필요 작업:
+  - 주소 → 좌표 변환 (geocoding) 또는 수동 입력
+  - 경로 최적화 알고리즘 (5~7 포인트 TSP, 브루트포스로 충분)
+  - 타임라인 UI (다크 테마)
+  - 각 정거장 간 이동 시간/거리 표시
+
+### 5. Legacy 파일 삭제
+- `HallCard.tsx`, `RouteTab.tsx`, `CopyButton.tsx` 제거
+- 삭제 전 `grep -r` 로 사용처 재확인 (이미 미사용이지만 안전)
+- `globals.css`의 warm-theme 전용 클래스들 (`.tl-*`, `.copy-btn` 등)도 같이 정리 가능
+
+### 6. 기타 소규모 개선
+- **body scroll lock**: 모바일 사이드바 드로어 열려있을 때 배경 스크롤 방지
+- **ESC 키로 드로어 닫기**: 키보드 접근성
+- **Supabase Presence API**: 상대방이 온라인인지 표시 ("wed2가 보고 있음")
+- **예산 spent 필드**: 예산 대비 실제 지출 트래킹
+- **로그인 세션 만료 시 자동 로그아웃 UI**: 현재는 새 요청 시 401 → 수동 재로그인
+- **에러 바운더리**: `app/error.tsx` 추가해서 런타임 에러 핸들링
