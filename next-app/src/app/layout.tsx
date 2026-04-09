@@ -13,10 +13,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "WWP - 우리들의 웨딩 플랜",
-  description: "신랑 100명 (광주) + 신부 80명 (서울) · 예산 1,000만원",
+  description: "우리들의 웨딩, 우리만의 계획으로.",
   openGraph: {
     title: "WWP - 우리들의 웨딩 플랜",
-    description: "신랑 100명 (광주) + 신부 80명 (서울) · 예산 1,000만원",
+    description: "우리들의 웨딩, 우리만의 계획으로.",
     type: "website",
     locale: "ko_KR",
     siteName: "WWP",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "WWP - 우리들의 웨딩 플랜",
-    description: "신랑 100명 (광주) + 신부 80명 (서울) · 예산 1,000만원",
+    description: "우리들의 웨딩, 우리만의 계획으로.",
   },
 };
 
