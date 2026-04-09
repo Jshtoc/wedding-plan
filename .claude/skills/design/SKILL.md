@@ -41,25 +41,43 @@ Used for: the main app (`/`, halls list, route timeline, modals, forms after log
 | `text-red` | `#c0392b` | error / over-budget |
 | `border-border` | `#e8e2da` | default border |
 
-### Auth palette (light, login page only)
-Used for: the `/login` page. A minimal, clean, light theme that's distinct from the warm main app while still feeling calm and modern.
+### Auth palette (dark aurora, login page only)
+Used for: the `/login` page. A **deep-night-sky** dark theme with a dominantly green aurora (mint + emerald + deep emerald blobs) behind a **transparent glass card**. Modeled on real northern-lights photography — green is the main aurora hue, not purple/pink. The whole composition is "card floats inside atmosphere".
 
 | Token | Hex | Role |
 |---|---|---|
-| `bg-sapphire` | `#4f46e5` | indigo — primary CTA button |
-| `text-jade` | `#0d9488` | teal — form labels, accents |
-| `border-pearl` | `#e5e7eb` | light gray — input borders, dividers |
+| `bg-mint` | `#00FFE1` | neon mint-cyan — brightest highlight curtain + primary CTA button (pair with `text-gray-900`) + label text on dark glass |
+| `bg-green` | `#10b981` | emerald-500 — main aurora curtain body |
+| `bg-dark-green` | `#064e3b` | emerald-900 — deep atmospheric tint, darkest/largest blob |
 
-The surrounding neutrals use Tailwind's default `gray-*` scale (`text-gray-900` for body, `text-gray-500` for captions, `text-gray-400` for placeholders, `bg-[#f5f5f7]` for the page background).
+The surrounding surfaces use semi-transparent whites on the dark base:
+
+| Purpose | Value |
+|---|---|
+| Page background | `bg-[#020806]` (near-black with a faint green undertone) |
+| Glass card background | `bg-white/[0.04]` + `backdrop-blur-2xl` |
+| Glass card border | `border-white/10` |
+| Input background (rest) | `bg-white/[0.05]` |
+| Input background (focus) | `bg-white/[0.08]` |
+| Input border (rest) | `border-white/15` |
+| Input border (focus) | `border-mint/80` with `focus:ring-4 focus:ring-mint/20` |
+| Body text on card | `text-white` |
+| Muted text on card | `text-white/50` ~ `text-white/60` |
+| Labels on card | `text-mint` (bright accent, also ties visually to the button) |
+| Error text | `text-red-300` on `bg-red-500/10` + `border border-red-400/20` |
+
+**Button contrast note — mandatory:** mint (`#00FFE1`) with white text is only ~1.3:1, failing WCAG spectacularly. Always pair `bg-mint` with `text-gray-900` (~18:1) for the primary button. Never put white text on mint.
+
+**Aurora background** is the defining visual of this page — see the "Aurora background" section under Motion below for the full pattern. Required for this palette; without it the dark card looks cold.
 
 **When to use which**:
-- Login page → auth palette only (sapphire / jade / pearl + gray neutrals)
-- Every other page (home, modals, forms, card grids) → main palette only (gold / ink / warm neutrals)
-- Don't mix. If you need a primary action color on a main-palette page, use `bg-ink` or `bg-gold` — not `bg-sapphire`.
+- Login page (and future auth-adjacent pages: signup, reset, etc.) → auth dark palette
+- Every other page (home, modals, forms, card grids) → main warm palette only (gold / ink / warm neutrals)
+- Don't mix. If you need a primary action color on a main-palette page, use `bg-ink` or `bg-gold` — not `bg-mint`.
 
 ## Design tokens (Tailwind v4 custom)
 
-All colors, fonts, and the card radius are defined as `@theme` tokens in `src/app/globals.css`. Tailwind v4 auto-generates utilities from them, so you write `bg-gold` instead of `bg-[var(--gold)]` and `bg-sapphire` instead of `bg-[#4f46e5]`.
+All colors, fonts, and the card radius are defined as `@theme` tokens in `src/app/globals.css`. Tailwind v4 auto-generates utilities from them, so you write `bg-gold` instead of `bg-[var(--gold)]` and `bg-mint` instead of `bg-[#14b8a6]`.
 
 **Use the token utilities first.** Fall back to arbitrary `bg-[var(--...)]` only for the legacy `:root` variables that still exist for the globals.css CSS classes (e.g. `border-[var(--border)]` works too but `border-border` is preferred in new code).
 
@@ -75,6 +93,36 @@ Stick to a small set of Tailwind spacing values. Don't introduce random pixel va
 - **Section vertical rhythm**: `py-10` / `py-12` (login outer) / default flow for main app (globals.css handles)
 
 Prefer consistent vertical rhythm over exact visual centering. If one card uses `mb-6` between fields, the next should too.
+
+### Comfortable form rhythm (reference spec — the login page "feel")
+
+This is the calibrated set of values that the user confirmed feels right for a centered form card (e.g. login page). Reuse these exact numbers for any similar form-on-card page — they give a spacious, calm, confident feel without feeling empty.
+
+| Element | Value |
+|---|---|
+| Card max width | `max-w-[440px]` |
+| Card padding | `p-10 sm:p-12` (40px mobile → 48px desktop) |
+| Card radius | `rounded-3xl` (24px) |
+| Brand block → first field | `mb-10` (40px) |
+| Label → input | `mb-2.5` (10px) |
+| Field group → next field | `mb-7` (28px) |
+| Last field → submit button | `mb-8` (32px) |
+| Input height × padding | `h-[60px] px-6` (60 tall, 24 horizontal) |
+| Input radius | `rounded-2xl` (16px) |
+| Button height | `h-[60px]` (matches inputs) |
+| Button radius | `rounded-2xl` |
+| Error box padding | `px-5 py-4` |
+| Error box gap (icon → text) | `gap-2.5` |
+| Outer page padding | `px-5 py-12` |
+
+Text inside this rhythm:
+- Card title: `text-[19px] font-semibold text-gray-900 tracking-tight`
+- Subtitle under title: `text-[13px] text-gray-500`
+- Labels: `text-sm font-semibold` (use `text-jade` for auth palette, `text-ink2` for warm)
+- Inputs: `text-base` (16px, non-negotiable for iOS zoom prevention)
+- Button label: `text-base font-semibold tracking-tight`
+
+If a user ever says "여백이 뭔가 어색해" / "박스가 답답해" / "간격이 애매해" on a form-on-card screen, reset the values to this table first before inventing new numbers.
 
 ## Typography
 
@@ -112,7 +160,7 @@ Four defined levels, ordered by depth. Pick the one that matches the element's r
 3. **Prominent** `shadow-[0_12px_40px_-12px_rgba(26,23,20,0.15)]`: floating cards, callouts
 4. **Modal / overlay** `shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)]` or `shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]` for the auth card
 
-For primary CTA buttons, pair a soft brand-colored shadow to lift them off the surface — e.g. the sapphire auth button uses `shadow-[0_4px_16px_-4px_rgba(79,70,229,0.35)]`.
+For primary CTA buttons, pair a soft brand-colored shadow to lift them off the surface — e.g. the mint auth button uses `shadow-[0_4px_16px_-4px_rgba(20,184,166,0.4)]`.
 
 ## Interaction states
 
@@ -120,7 +168,7 @@ Every interactive element needs all four states:
 
 - **Rest**: the default look
 - **Hover**: subtle brightness/opacity change (skip on touch devices — they don't hover)
-- **Focus**: clear border color change to the accent (`focus:border-gold` for main palette, `focus:border-sapphire focus:ring-4 focus:ring-sapphire/10` for auth palette), plus `focus:outline-none`
+- **Focus**: clear border color change to the accent (`focus:border-gold` for main palette, `focus:border-mint focus:ring-4 focus:ring-mint/20` for auth palette), plus `focus:outline-none`
 - **Active**: `active:scale-[0.98]` for buttons, slight feedback
 - **Disabled** (when applicable): `disabled:opacity-60 disabled:cursor-not-allowed`
 
@@ -134,6 +182,61 @@ Keep it restrained. The app is a tool, not an experience.
 - **Press feedback**: `active:scale-[0.98]`
 - **Loading spinners**: `animate-spin` on a border circle
 - **No complex page transitions**, no staggered entrance animations, no parallax
+
+### Aurora background (auth-only)
+
+The defining visual of the login page: **four blurred circles drifting across a deep night sky**, blended with `mix-blend-screen` to create true additive aurora glow. Mint + violet + pink + blue on a near-black base (`#030515`). A transparent glass card floats inside the aurora.
+
+**Critical: the base must be very dark.** `mix-blend-screen` is additive: `color + black = color` (bright), `color + white = white` (vanishes). The deeper the base, the more the aurora "glows". Use `#030515` — near-black with a subtle blue undertone.
+
+Pattern: wrap the page with the `AuroraBackground` component (Aceternity UI pattern). The component lives at `src/app/components/ui/AuroraBackground.tsx` and handles all the gradient/animation/blend-mode machinery.
+
+```tsx
+import { AuroraBackground } from "@/app/components/ui/AuroraBackground";
+
+export default function LoginPage() {
+  return (
+    <AuroraBackground className="dark px-5 py-12" animationSpeed={60}>
+      <form className="relative z-10 w-full max-w-[440px] bg-white/[0.04] backdrop-blur-2xl rounded-3xl p-10 sm:p-12 border border-white/10 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.8)]">
+        {/* content uses dark-theme text colors — see "Auth palette (dark aurora)" above */}
+      </form>
+    </AuroraBackground>
+  );
+}
+```
+
+Key component props:
+- `className` — additional classes on the outer wrapper. **Always pass `dark`** here so the aurora uses the dark-gradient path.
+- `animationSpeed` — seconds for one aurora-pan loop. Default 60s (subtle). Use 10–20 for noticeable.
+- `showRadialGradient` — default `true`. Fades the aurora via a radial mask from top-right corner.
+
+How the component works internally:
+- Outer wrapper is `relative flex min-h-dvh ... dark:bg-zinc-900`
+- Inner decoration div sets CSS custom properties (`--aurora`, `--white-gradient`, `--dark-gradient`, `--color-1..5`) via inline style — **this is the one place inline style is allowed in the project** because Tailwind can't set CSS variables dynamically from props
+- A deeper div uses Tailwind arbitrary-property syntax (`[background-image:var(--white-gradient),var(--aurora)]` etc) to stack two `repeating-linear-gradient`s, applies `blur-[10px] invert filter` plus `mix-blend-difference` on its `::after` pseudo-element
+- The `::after` carries the `[animation:aurora_var(--animation-speed)_linear_infinite]` which pans `background-position` from `50% 50%` → `350% 50%` over the configured duration
+- `dark:` variants swap the light `--white-gradient` for `--dark-gradient` and remove the invert
+- `prefers-reduced-motion: reduce` in `globals.css` freezes the animation
+
+Because it's a single component, copying aurora to a new auth-adjacent page (signup, password reset, etc.) is one import + one wrapper.
+
+**The card is transparent glass, not white.** It uses `bg-white/[0.04] backdrop-blur-2xl` so the aurora tints it from behind. A solid white card would "punch a hole" in the atmosphere and break the effect. All text inside the card uses dark-theme colors (`text-white`, `text-mint`, `text-white/50`) — not the light-theme `text-gray-900`/`text-jade` you'd use on a white surface.
+
+Rules for this pattern:
+- **Only on auth/login-like pages.** Never on the main app.
+- **Always pass `className="dark"`** to `AuroraBackground` so the dark gradient variant applies (without `dark`, the component renders its light-mode version on `bg-zinc-50`).
+- **Don't reimplement the aurora.** Use the `AuroraBackground` component. Do not copy its internals into other files — future tweaks (animation, gradient stops, opacity) happen in one place.
+- **Never modify the component's arbitrary-property className string** unless you really know what you're doing — the order and combination of `[background-image:...]`, `[background-size:...]`, `after:mix-blend-difference`, `dark:invert-0`, etc. is precisely calibrated.
+- **The Aceternity aurora colors (`#10b981`/`#34d399`/`#6ee7b7`/`#2dd4bf`/`#14b8a6`) are hard-coded inside the component** as inline CSS variables. These are emerald/teal Tailwind defaults, close to but not identical to the project's `mint`/`green`/`dark-green` tokens. That's fine — the button and labels still use the project tokens, and the aurora colors only exist inside the aurora.
+- **Glass card on top** (unchanged): `bg-white/[0.04] backdrop-blur-2xl border border-white/10` + strong dark drop shadow + `relative z-10` so it sits above the aurora layer.
+- **Card content colors** (unchanged): `text-white` for body, `text-mint` for labels, `text-white/50`–`/60` for muted.
+- **`prefers-reduced-motion`** handled globally in `globals.css` via attribute-selector match on any `[animation:aurora` class.
+
+### Why inline CSS variables are allowed here
+
+The frontend skill forbids inline `style={{...}}` for layout. The `AuroraBackground` component uses inline style only to set CSS custom properties (`--aurora`, `--color-1`, `--animation-speed`, etc.) that are then consumed inside the Tailwind arbitrary-property classes. This is the intended escape hatch because Tailwind cannot set `--*` variables per-instance from props (e.g. `animationSpeed`). Do NOT apply this exception to regular styling — only to CSS variable injection driven by component props.
+
+If the user wants a light-theme auth page instead, the aurora has to be abandoned entirely — there's no light equivalent that reads the same way. Use a plain `bg-[#f5f5f7]` page with the form card in the default light-theme style and no background effect.
 
 ## Emojis (TwEmoji sizing)
 
@@ -151,14 +254,14 @@ All emojis go through the `TwEmoji` component (see frontend skill). The `size` p
 See `convention.md` for the full code snippets. Short version:
 
 - **Primary button (warm bg)**: `bg-ink text-white rounded-xl h-12 font-medium` + interaction states
-- **Primary button (auth bg)**: `bg-sapphire text-white rounded-2xl h-14 font-semibold` + soft sapphire shadow + interaction states
+- **Primary button (auth bg)**: `bg-mint text-gray-900 rounded-2xl h-[60px] font-semibold` + soft mint shadow + interaction states
 - **Ghost button on warm dark header**: `bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-[11px]`
 - **Input (warm)**: `h-12 px-4 text-base bg-bg border border-border rounded-xl` + focus states
-- **Input (auth)**: `h-14 px-5 text-base bg-white border border-pearl rounded-2xl` + `focus:border-sapphire focus:ring-4 focus:ring-sapphire/10`
+- **Input (auth)**: `h-[60px] px-6 text-base bg-white border border-pearl rounded-2xl` + `focus:border-mint focus:ring-4 focus:ring-mint/20`
 - **Card (warm)**: use the `.card` class from globals.css, or `bg-card border border-border rounded-[var(--radius)] p-6`
-- **Card (auth)**: `bg-white border border-pearl/70 rounded-3xl p-8 sm:p-10 shadow-[0_2px_24px_rgba(15,23,42,0.04)]`
+- **Card (auth)**: `bg-white border border-pearl/70 rounded-3xl p-10 sm:p-12 shadow-[0_2px_24px_rgba(15,23,42,0.04)]`
 - **Error box (warm)**: `bg-red-light text-red border border-red/20 px-3.5 py-3 rounded-xl text-[13px]`
-- **Error box (auth)**: `bg-red-50 text-red-600 border border-red-200 px-4 py-3 rounded-xl text-[13px]`
+- **Error box (auth)**: `bg-red-50 text-red-600 border border-red-200 px-5 py-4 rounded-xl text-[13px]`
 
 ## Adding a token
 
@@ -178,7 +281,7 @@ Before calling a visual task done, walk through this list:
 
 1. **Read this skill and `convention.md`** if you haven't this session.
 2. **Pick palette** — main or auth. Don't mix.
-3. **Use tokens**, not raw hex. `bg-sapphire`, not `bg-[#4f46e5]`.
+3. **Use tokens**, not raw hex. `bg-mint`, not `bg-[#14b8a6]`.
 4. **Use spacing from the scale**, not random pixel values.
 5. **Interactive elements** have hover / focus / active / disabled states.
 6. **Touch targets** ≥ 44px on mobile.

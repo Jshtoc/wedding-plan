@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Class-based dark mode so `dark:` variants apply whenever a `.dark`
+   class is present on any ancestor. The login page explicitly opts in
+   by wrapping its content with the AuroraBackground component which
+   carries the `.dark` class. Other pages stay in light-mode defaults. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Pretendard is loaded via a <link> in src/app/layout.tsx so that React 19
    can hoist it into <head> automatically without violating CSS import-order
    constraints. See layout.tsx. */
@@ -24,14 +30,36 @@
   --color-border: #e8e2da;
 
   /* ─── Auth / login page palette (3 colors) ──────────── */
-  /* Usage: bg-sapphire / text-jade / border-pearl ...
-     Light minimal theme for the login flow. Do not mix with the main
-     warm palette on the same page. */
-  --color-sapphire: #4f46e5;  /* indigo — primary CTA button */
-  --color-jade:     #0d9488;  /* teal  — labels, accents */
-  --color-pearl:    #e5e7eb;  /* light gray — input borders, dividers */
+  /* Usage: bg-mint / bg-green / bg-dark-green ...
+     Tonal aurora palette — bright mint highlight, mid emerald body,
+     deep emerald atmosphere — used on the dark glass login page. Do
+     not mix with the main warm palette on the same page. */
+  --color-mint:       #00FFE1;  /* neon mint/cyan — brightest highlight + primary CTA button (always with text-gray-900) */
+  --color-green:      #10b981;  /* emerald-500 — main aurora curtain body */
+  --color-dark-green: #064e3b;  /* emerald-900 — deep atmospheric tint, darkest blob */
 
   --radius-card: 16px;
+
+}
+
+/* Aurora keyframe used by the AuroraBackground component.
+   Pans two layered gradients horizontally over a long duration,
+   producing the flowing-curtain look. Exact Aceternity UI timing. */
+@keyframes aurora {
+  from {
+    background-position: 50% 50%, 50% 50%;
+  }
+  to {
+    background-position: 350% 50%, 350% 50%;
+  }
+}
+
+/* Respect reduced-motion preference — freeze the aurora animation. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-aurora"],
+  [class*="[animation:aurora"] {
+    animation: none !important;
+  }
 }
 
 :root {
@@ -52,7 +80,13 @@
   --radius: var(--radius-card);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Global reset — wrapped in @layer base so Tailwind utilities (in the
+   later @layer utilities) can still override padding/margin when
+   applied. Without the layer, this unlayered `*` selector would beat
+   any layered utility regardless of specificity. */
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+}
 
 /* Twemoji inline image */
 .twemoji {

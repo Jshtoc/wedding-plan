@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Generate a bcrypt hash for a plaintext password.
 // Usage: node scripts/hash-password.mjs <password>
-// Then copy the output into .env.local as ADMIN_PASSWORD_HASH=...
 
 import bcrypt from "bcryptjs";
 
@@ -14,4 +13,12 @@ if (!password) {
 }
 
 const hash = bcrypt.hashSync(password, 10);
-console.log(hash);
+const escaped = hash.replaceAll("$", "\\$");
+
+console.log("");
+console.log("Raw hash (paste into Vercel / Supabase dashboards):");
+console.log("  " + hash);
+console.log("");
+console.log("Escaped hash (paste into .env.local — Next.js expands $):");
+console.log("  " + escaped);
+console.log("");
