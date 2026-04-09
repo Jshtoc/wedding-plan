@@ -94,6 +94,15 @@
   vertical-align: -0.15em;
 }
 
+/* Hide scrollbar but keep scrolling (for horizontal nav scrolls). */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   background: var(--bg);
   font-family: var(--font-pretendard);

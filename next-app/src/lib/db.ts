@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { WeddingHall } from "@/data/halls";
+import { BudgetItem, BudgetCategory } from "@/data/budgets";
 
 // DB row (snake_case) → 프론트엔드 (camelCase)
 function rowToHall(row: Record<string, unknown>): WeddingHall {
@@ -91,5 +92,33 @@ export async function deleteHall(id: number): Promise<void> {
     .from("halls")
     .delete()
     .eq("id", id);
+  if (error) throw error;
+}
+
+/* ─────────────── Budgets ─────────────── */
+
+function rowToBudget(row: Record<string, unknown>): BudgetItem {
+  return {
+    category: row.category as BudgetCategory,
+    budget: (row.budget as number) || 0,
+  };
+}
+
+export async function getBudgets(): Promise<BudgetItem[]> {
+  const { data, error } = await supabase.from("budgets").select("*");
+  if (error) throw error;
+  return (data || []).map(rowToBudget);
+}
+
+export async function upsertBudgets(items: BudgetItem[]): Promise<void> {
+  if (items.length === 0) return;
+  const rows = items.map((i) => ({
+    category: i.category,
+    budget: Math.max(0, Math.floor(i.budget) || 0),
+    updated_at: new Date().toISOString(),
+  }));
+  const { error } = await supabase
+    .from("budgets")
+    .upsert(rows, { onConflict: "category" });
   if (error) throw error;
 }

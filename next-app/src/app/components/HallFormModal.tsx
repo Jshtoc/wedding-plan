@@ -72,6 +72,52 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
 
   const [saving, setSaving] = useState(false);
 
+  // URL preview fetch (fills empty fields from og:title / og:image / og:description)
+  const [urlInput, setUrlInput] = useState("");
+  const [fetchingPreview, setFetchingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const handleFetchPreview = async () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      setPreviewError("URL을 입력해주세요.");
+      return;
+    }
+    setFetchingPreview(true);
+    setPreviewError(null);
+    try {
+      const res = await fetch("/api/fetch-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      const data = (await res.json()) as {
+        title?: string;
+        description?: string;
+        image?: string;
+        siteName?: string;
+        url?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setPreviewError(data.error || "미리보기를 가져오지 못했습니다.");
+        return;
+      }
+      // Fill only empty fields — never overwrite user input.
+      if (data.title && !name) setName(data.title);
+      if (data.siteName && !sub) setSub(data.siteName);
+      if (data.description && !note) setNote(data.description);
+      if (data.image && !image) {
+        setImage(data.image);
+        if (data.title && !imageAlt) setImageAlt(data.title);
+      }
+    } catch (e: unknown) {
+      setPreviewError(e instanceof Error ? e.message : "네트워크 오류");
+    } finally {
+      setFetchingPreview(false);
+    }
+  };
+
   useEffect(() => {
     if (hall) {
       setName(hall.name);
@@ -196,6 +242,45 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
         </div>
 
         <div className="modal-body">
+          {/* URL로 자동 입력 */}
+          <div className="form-section">
+            <div className="form-section-title">URL로 자동 입력 (선택)</div>
+            <div className="form-group full">
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleFetchPreview();
+                    }
+                  }}
+                  placeholder="웨딩홀 공식 페이지 URL 붙여넣기"
+                  className="flex-1"
+                  disabled={fetchingPreview}
+                />
+                <button
+                  type="button"
+                  onClick={handleFetchPreview}
+                  disabled={fetchingPreview}
+                  className="btn-add whitespace-nowrap"
+                >
+                  {fetchingPreview ? "불러오는 중..." : "가져오기"}
+                </button>
+              </div>
+              {previewError && (
+                <div className="text-[11px] text-[var(--red)] mt-1.5">
+                  {previewError}
+                </div>
+              )}
+              <div className="text-[10px] text-[var(--ink3)] mt-1.5 leading-relaxed">
+                URL의 OG/meta 태그를 가져와 비어있는 이름·이미지·설명 필드를 자동 채웁니다. 이미 입력한 값은 덮어쓰지 않아요.
+              </div>
+            </div>
+          </div>
+
           {/* 기본 정보 */}
           <div className="form-section">
             <div className="form-section-title">기본 정보</div>
