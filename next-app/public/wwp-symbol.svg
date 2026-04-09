@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360">
+  <rect width="360" height="360" rx="72" fill="#0D0F14"/>
+
+  <!-- W1 solid -->
+  <text x="48" y="218"
+    font-family="Liberation Sans, DejaVu Sans, Arial, sans-serif"
+    font-size="125" font-weight="normal"
+    fill="#00ffe1">W</text>
+
+  <!-- W2 outline overlapping -->
+  <text x="122" y="218"
+    font-family="Liberation Sans, DejaVu Sans, Arial, sans-serif"
+    font-size="125" font-weight="normal"
+    fill="#0D0F14" stroke="#00ffe1" stroke-width="3">W</text>
+
+  <!-- P solid -->
+  <text x="238" y="218"
+    font-family="Liberation Sans, DejaVu Sans, Arial, sans-serif"
+    font-size="125" font-weight="normal"
+    fill="#00ffe1">P</text>
+
+  <!-- Underline -->
+  <line x1="48" y1="234" x2="316" y2="234"
+    stroke="#00ffe1" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- WE WEDDING PLAN -->
+  <text x="182" y="280"
+    text-anchor="middle"
+    font-family="Liberation Sans, DejaVu Sans, Arial, sans-serif"
+    font-size="17" font-weight="normal"
+    fill="#00ffe1" opacity="0.65"
+    letter-spacing="5">WE WEDDING PLAN</text>
+</svg>

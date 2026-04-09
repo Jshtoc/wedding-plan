@@ -48,11 +48,16 @@ function LoginForm() {
       >
         {/* Brand */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-mint/15 border border-mint/25 mb-4 shadow-[0_0_40px_-8px_rgba(0,255,225,0.4)]">
-            <TwEmoji emoji="💍" size={28} />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/wwp-symbol.svg"
+            alt="우리들의 웨딩 플랜"
+            width={72}
+            height={72}
+            className="mx-auto mb-4 rounded-2xl shadow-[0_0_50px_-8px_rgba(0,255,225,0.55)]"
+          />
           <h1 className="text-[19px] font-semibold text-white mb-1.5 tracking-tight">
-            웨딩홀 비교 리스트
+            우리들의 웨딩 플랜
           </h1>
           <p className="text-[13px] text-white/50">로그인하고 계속하기</p>
         </div>
