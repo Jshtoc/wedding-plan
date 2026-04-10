@@ -103,6 +103,50 @@
   display: none;
 }
 
+/* Hide the native up/down spinner controls on <input type="number">.
+   The project uses custom inline layouts (with suffix labels like "만원",
+   "명", "대") where the browser's default spinner buttons clash with
+   the design. Numeric inputs still work normally — users type directly. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ─── Custom scrollbars (dark glass theme) ─────────────────────────
+   The app is dark-themed throughout, so the default light scrollbars
+   look jarring. These rules apply globally. The `.scrollbar-none`
+   utility above still works — it's a more specific opt-out. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 225, 0.25);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 body {
   background: var(--bg);
   font-family: var(--font-pretendard);

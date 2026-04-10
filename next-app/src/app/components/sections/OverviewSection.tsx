@@ -2,84 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { BudgetItem } from "@/data/budgets";
+import { EVENT_TYPE_META, WeddingEvent } from "@/data/events";
 import TwEmoji from "../ui/TwEmoji";
 import BudgetDonutChart from "../ui/BudgetDonutChart";
-
-/* ──────────────────────────────────────────────
-   Types and sample data
-   (replace sample events with a Supabase query
-   when the `events` table exists.)
-   ────────────────────────────────────────────── */
-
-type EventType = "hall" | "studio" | "dress" | "makeup" | "other";
-
-interface WeddingEvent {
-  id: number;
-  date: string; // ISO YYYY-MM-DD
-  title: string;
-  type: EventType;
-  time?: string;
-  location?: string;
-}
-
-const SAMPLE_EVENTS: WeddingEvent[] = [
-  {
-    id: 1,
-    date: "2026-04-15",
-    title: "제이오스티엘 투어",
-    type: "hall",
-    time: "14:00",
-    location: "서울 구로구",
-  },
-  {
-    id: 2,
-    date: "2026-04-20",
-    title: "신부 드레스 1차 피팅",
-    type: "dress",
-    time: "11:00",
-    location: "강남 드레스 샵",
-  },
-  {
-    id: 3,
-    date: "2026-04-28",
-    title: "SW 컨벤션 투어",
-    type: "hall",
-    time: "15:30",
-    location: "서울 종로구",
-  },
-  {
-    id: 4,
-    date: "2026-05-05",
-    title: "스튜디오 프리웨딩 촬영",
-    type: "studio",
-    time: "09:00",
-    location: "용산 스튜디오",
-  },
-  {
-    id: 5,
-    date: "2026-05-12",
-    title: "메이크업 리허설",
-    type: "makeup",
-    time: "10:30",
-    location: "청담동",
-  },
-];
-
-const TYPE_ICON: Record<EventType, string> = {
-  hall: "💒",
-  studio: "📸",
-  dress: "👰",
-  makeup: "💄",
-  other: "📌",
-};
-
-const TYPE_LABEL: Record<EventType, string> = {
-  hall: "웨딩홀",
-  studio: "스튜디오",
-  dress: "드레스",
-  makeup: "메이크업",
-  other: "기타",
-};
 
 /* ──────────────────────────────────────────────
    Main Overview Section
@@ -87,18 +12,36 @@ const TYPE_LABEL: Record<EventType, string> = {
 
 interface OverviewSectionProps {
   hallsCount: number;
+  studiosCount: number;
+  dressesCount: number;
+  makeupsCount: number;
   budgets: BudgetItem[];
+  events: WeddingEvent[];
+  /** Called when the user wants to add a new event (no existing event). */
+  onAddEvent: () => void;
+  /** Called when the user clicks an event to edit it. */
+  onEditEvent: (event: WeddingEvent) => void;
 }
 
 export default function OverviewSection({
   hallsCount,
+  studiosCount,
+  dressesCount,
+  makeupsCount,
   budgets,
+  events,
+  onAddEvent,
+  onEditEvent,
 }: OverviewSectionProps) {
-  const events = SAMPLE_EVENTS;
-
   return (
     <div className="space-y-6 md:space-y-8">
-      <StatusCards hallsCount={hallsCount} eventsCount={events.length} />
+      <StatusCards
+        hallsCount={hallsCount}
+        studiosCount={studiosCount}
+        dressesCount={dressesCount}
+        makeupsCount={makeupsCount}
+        eventsCount={events.length}
+      />
 
       {/* Budget donut */}
       <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8">
@@ -111,16 +54,18 @@ export default function OverviewSection({
               예산 배분
             </div>
           </div>
-          <div className="text-[11px] text-white/40">
-            항목별 차지 비율
-          </div>
+          <div className="text-[11px] text-white/40">항목별 차지 비율</div>
         </div>
         <BudgetDonutChart items={budgets} />
       </div>
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <MonthCalendar events={events} />
-        <UpcomingEventsList events={events} />
+        <MonthCalendar events={events} onEditEvent={onEditEvent} />
+        <UpcomingEventsList
+          events={events}
+          onAddEvent={onAddEvent}
+          onEditEvent={onEditEvent}
+        />
       </div>
     </div>
   );
@@ -132,10 +77,19 @@ export default function OverviewSection({
 
 interface StatusCardsProps {
   hallsCount: number;
+  studiosCount: number;
+  dressesCount: number;
+  makeupsCount: number;
   eventsCount: number;
 }
 
-function StatusCards({ hallsCount, eventsCount }: StatusCardsProps) {
+function StatusCards({
+  hallsCount,
+  studiosCount,
+  dressesCount,
+  makeupsCount,
+  eventsCount,
+}: StatusCardsProps) {
   const cards: {
     icon: string;
     label: string;
@@ -143,9 +97,24 @@ function StatusCards({ hallsCount, eventsCount }: StatusCardsProps) {
     accent: boolean;
   }[] = [
     { icon: "💒", label: "웨딩홀", count: hallsCount, accent: hallsCount > 0 },
-    { icon: "📸", label: "스튜디오", count: 0, accent: false },
-    { icon: "👰", label: "드레스", count: 0, accent: false },
-    { icon: "💄", label: "메이크업", count: 0, accent: false },
+    {
+      icon: "📸",
+      label: "스튜디오",
+      count: studiosCount,
+      accent: studiosCount > 0,
+    },
+    {
+      icon: "👰",
+      label: "드레스",
+      count: dressesCount,
+      accent: dressesCount > 0,
+    },
+    {
+      icon: "💄",
+      label: "메이크업",
+      count: makeupsCount,
+      accent: makeupsCount > 0,
+    },
     {
       icon: "📅",
       label: "예정 일정",
@@ -198,9 +167,10 @@ function StatusCards({ hallsCount, eventsCount }: StatusCardsProps) {
 
 interface MonthCalendarProps {
   events: WeddingEvent[];
+  onEditEvent: (event: WeddingEvent) => void;
 }
 
-function MonthCalendar({ events }: MonthCalendarProps) {
+function MonthCalendar({ events, onEditEvent }: MonthCalendarProps) {
   const [viewMonth, setViewMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -349,22 +319,8 @@ function MonthCalendar({ events }: MonthCalendarProps) {
           const isCurrentDay = isToday(day);
           const weekday = i % 7;
 
-          return (
-            <div
-              key={day}
-              className={
-                "aspect-square flex flex-col items-center justify-center relative rounded-lg text-sm transition-colors " +
-                (isCurrentDay
-                  ? "bg-mint/15 text-mint border border-mint/40"
-                  : hasEvents
-                    ? "text-white hover:bg-white/[0.06]"
-                    : weekday === 0
-                      ? "text-red-300/70 hover:bg-white/[0.04]"
-                      : weekday === 6
-                        ? "text-sky-300/70 hover:bg-white/[0.04]"
-                        : "text-white/60 hover:bg-white/[0.04]")
-              }
-            >
+          const content = (
+            <>
               <span className={isCurrentDay ? "font-semibold" : ""}>{day}</span>
               {hasEvents && (
                 <div className="absolute bottom-1.5 flex gap-0.5">
@@ -377,6 +333,36 @@ function MonthCalendar({ events }: MonthCalendarProps) {
                   ))}
                 </div>
               )}
+            </>
+          );
+
+          const baseClass =
+            "aspect-square flex flex-col items-center justify-center relative rounded-lg text-sm transition-colors " +
+            (isCurrentDay
+              ? "bg-mint/15 text-mint border border-mint/40"
+              : hasEvents
+                ? "text-white hover:bg-white/[0.08] cursor-pointer"
+                : weekday === 0
+                  ? "text-red-300/70 hover:bg-white/[0.04]"
+                  : weekday === 6
+                    ? "text-sky-300/70 hover:bg-white/[0.04]"
+                    : "text-white/60 hover:bg-white/[0.04]");
+
+          // Clicking a day with events opens the first one for editing.
+          // (Multi-event days could later show a popover.)
+          return hasEvents ? (
+            <button
+              type="button"
+              key={day}
+              onClick={() => onEditEvent(eventsOfDay[0])}
+              className={baseClass}
+              aria-label={`${day}일 일정 ${eventsOfDay.length}건`}
+            >
+              {content}
+            </button>
+          ) : (
+            <div key={day} className={baseClass}>
+              {content}
             </div>
           );
         })}
@@ -391,9 +377,15 @@ function MonthCalendar({ events }: MonthCalendarProps) {
 
 interface UpcomingEventsListProps {
   events: WeddingEvent[];
+  onAddEvent: () => void;
+  onEditEvent: (event: WeddingEvent) => void;
 }
 
-function UpcomingEventsList({ events }: UpcomingEventsListProps) {
+function UpcomingEventsList({
+  events,
+  onAddEvent,
+  onEditEvent,
+}: UpcomingEventsListProps) {
   const upcoming = useMemo(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -415,9 +407,15 @@ function UpcomingEventsList({ events }: UpcomingEventsListProps) {
             다가오는 일정
           </div>
         </div>
-        <span className="text-[11px] text-white/40">
-          {upcoming.length}건
-        </span>
+        <button
+          type="button"
+          onClick={onAddEvent}
+          aria-label="일정 추가"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-medium text-mint hover:text-gray-900 bg-mint/10 hover:bg-mint border border-mint/30 hover:border-mint transition-colors"
+        >
+          <span className="text-sm leading-none">+</span>
+          일정 추가
+        </button>
       </div>
 
       {upcoming.length === 0 ? (
@@ -426,13 +424,17 @@ function UpcomingEventsList({ events }: UpcomingEventsListProps) {
             예정된 일정이 없습니다
           </div>
           <div className="text-[11px] text-white/30">
-            새 일정을 추가해보세요
+            우측 상단 버튼으로 일정을 추가해보세요
           </div>
         </div>
       ) : (
         <div className="space-y-2">
           {upcoming.map((e) => (
-            <EventItem key={e.id} event={e} />
+            <EventItem
+              key={e.id}
+              event={e}
+              onClick={() => onEditEvent(e)}
+            />
           ))}
         </div>
       )}
@@ -442,9 +444,10 @@ function UpcomingEventsList({ events }: UpcomingEventsListProps) {
 
 interface EventItemProps {
   event: WeddingEvent;
+  onClick: () => void;
 }
 
-function EventItem({ event }: EventItemProps) {
+function EventItem({ event, onClick }: EventItemProps) {
   const d = new Date(event.date);
   const dateLabel = d.toLocaleDateString("ko-KR", {
     month: "long",
@@ -465,11 +468,17 @@ function EventItem({ event }: EventItemProps) {
         ? `D-${diffDays}`
         : `D+${-diffDays}`;
 
+  const meta = EVENT_TYPE_META[event.type];
+
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/15 hover:bg-white/[0.04] transition-colors">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/15 hover:bg-white/[0.04] transition-colors"
+    >
       {/* Type icon */}
       <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-mint/10 border border-mint/20 flex items-center justify-center">
-        <TwEmoji emoji={TYPE_ICON[event.type]} size={18} />
+        <TwEmoji emoji={meta.icon} size={18} />
       </div>
 
       {/* Content */}
@@ -489,10 +498,10 @@ function EventItem({ event }: EventItemProps) {
           {event.time && event.location && <span>·</span>}
           {event.location && <span className="truncate">{event.location}</span>}
           <span className="ml-auto text-white/30 flex-shrink-0">
-            {TYPE_LABEL[event.type]}
+            {meta.label}
           </span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }

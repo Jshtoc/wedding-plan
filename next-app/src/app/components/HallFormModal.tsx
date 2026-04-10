@@ -1,81 +1,95 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { WeddingHall } from "@/data/halls";
+import { useState, useEffect, useMemo } from "react";
+import {
+  WeddingHall,
+  TransportMode,
+  TRANSPORT_META,
+  computePriceLevel,
+} from "@/data/halls";
+import { BudgetItem } from "@/data/budgets";
+import TwEmoji from "./ui/TwEmoji";
 
 interface Props {
   hall?: WeddingHall | null;
+  /** Budgets from the parent — used to compute the price level dot.
+   *  When the `hall` category budget is 0, the dot is hidden. */
+  budgets: BudgetItem[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-const EMPTY: Omit<WeddingHall, "id"> = {
-  name: "",
-  sub: "",
-  price: 0,
-  priceLabel: "180명 기준",
-  priceText: "",
-  priceLevel: "ok",
-  ktx: 3,
-  ktxText: "",
-  ktxWarn: false,
-  parking: 0,
-  isBest: false,
-  bestLabel: "",
-  image: "",
-  imageAlt: "",
-  imageFallback: "🏛️",
-  badges: [],
-  infoGrid: [],
-  extraInfoGrid: undefined,
-  calc: { title: "📊 예상 견적", rows: [] },
-  note: "",
-  noteType: undefined,
-};
+// ─── Shared dark-glass class strings ───
+const input =
+  "w-full h-11 px-3.5 text-sm bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder:text-white/25 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all tabular-nums";
+const textarea =
+  "w-full px-3.5 py-2.5 text-sm bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder:text-white/25 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all resize-y leading-relaxed";
+const label =
+  "block text-[10px] font-medium text-white/50 uppercase tracking-wider mb-1.5";
+const sectionLabel =
+  "text-[10px] font-semibold text-mint/70 tracking-[0.2em] uppercase";
+const primaryBtn =
+  "h-11 px-6 rounded-lg text-xs font-semibold bg-mint text-gray-900 hover:bg-mint/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_6px_20px_-6px_rgba(0,255,225,0.5)]";
+const ghostBtn =
+  "h-11 px-5 rounded-lg text-xs font-medium text-white/60 hover:text-white hover:bg-white/[0.06] border border-white/10 transition-colors disabled:opacity-50";
 
-export default function HallFormModal({ hall, onClose, onSaved }: Props) {
+function CloseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 3.5 L12.5 12.5 M12.5 3.5 L3.5 12.5" />
+    </svg>
+  );
+}
+
+export default function HallFormModal({
+  hall,
+  budgets,
+  onClose,
+  onSaved,
+}: Props) {
   const isEdit = !!hall;
 
   const [name, setName] = useState("");
   const [sub, setSub] = useState("");
   const [price, setPrice] = useState(0);
-  const [priceLabel, setPriceLabel] = useState("180명 기준");
-  const [priceText, setPriceText] = useState("");
-  const [priceLevel, setPriceLevel] = useState<"ok" | "warn" | "over">("ok");
-  const [ktx, setKtx] = useState(3);
-  const [ktxText, setKtxText] = useState("");
-  const [ktxWarn, setKtxWarn] = useState(false);
+  const [guests, setGuests] = useState(0);
   const [parking, setParking] = useState(0);
-  const [isBest, setIsBest] = useState(false);
-  const [bestLabel, setBestLabel] = useState("");
-  const [image, setImage] = useState("");
-  const [imageAlt, setImageAlt] = useState("");
-  const [imageFallback, setImageFallback] = useState("🏛️");
+  const [transport, setTransport] = useState<TransportMode[]>([]);
   const [note, setNote] = useState("");
-  const [noteType, setNoteType] = useState<"" | "warn" | "danger">("");
-
-  // badges as comma-separated text for simplicity
-  const [badgesText, setBadgesText] = useState("");
-  const [badgesColors, setBadgesColors] = useState("");
-
-  // info grid rows
-  const [infoRows, setInfoRows] = useState<{ label: string; value: string }[]>([
-    { label: "", value: "" },
-  ]);
-  const [extraRows, setExtraRows] = useState<{ label: string; value: string }[]>([]);
-
-  // calc
-  const [calcTitle, setCalcTitle] = useState("📊 예상 견적");
-  const [calcRows, setCalcRows] = useState<
-    { label: string; value: string; isTotal?: boolean }[]
-  >([{ label: "", value: "" }]);
-
-  const [saving, setSaving] = useState(false);
-
-  // URL preview fetch (fills empty fields from og:title / og:image / og:description)
   const [urlInput, setUrlInput] = useState("");
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [showGradeGuide, setShowGradeGuide] = useState(false);
+
+  // Look up the hall-category budget once per render. This drives the
+  // traffic-light dot next to the price input.
+  const hallBudget = useMemo(
+    () => budgets.find((b) => b.category === "hall")?.budget ?? 0,
+    [budgets]
+  );
+  const priceLevel = computePriceLevel(price, hallBudget);
+
+  useEffect(() => {
+    if (hall) {
+      setName(hall.name);
+      setSub(hall.sub);
+      setPrice(hall.price);
+      setGuests(hall.guests);
+      setParking(hall.parking);
+      setTransport(hall.transport ?? []);
+      setNote(hall.note);
+    }
+  }, [hall]);
 
   const handleFetchPreview = async () => {
     const trimmed = urlInput.trim();
@@ -94,9 +108,7 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
       const data = (await res.json()) as {
         title?: string;
         description?: string;
-        image?: string;
         siteName?: string;
-        url?: string;
         error?: string;
       };
       if (!res.ok) {
@@ -107,10 +119,6 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
       if (data.title && !name) setName(data.title);
       if (data.siteName && !sub) setSub(data.siteName);
       if (data.description && !note) setNote(data.description);
-      if (data.image && !image) {
-        setImage(data.image);
-        if (data.title && !imageAlt) setImageAlt(data.title);
-      }
     } catch (e: unknown) {
       setPreviewError(e instanceof Error ? e.message : "네트워크 오류");
     } finally {
@@ -118,75 +126,27 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
     }
   };
 
-  useEffect(() => {
-    if (hall) {
-      setName(hall.name);
-      setSub(hall.sub);
-      setPrice(hall.price);
-      setPriceLabel(hall.priceLabel);
-      setPriceText(hall.priceText);
-      setPriceLevel(hall.priceLevel);
-      setKtx(hall.ktx);
-      setKtxText(hall.ktxText);
-      setKtxWarn(hall.ktxWarn || false);
-      setParking(hall.parking);
-      setIsBest(hall.isBest || false);
-      setBestLabel(hall.bestLabel || "");
-      setImage(hall.image);
-      setImageAlt(hall.imageAlt);
-      setImageFallback(hall.imageFallback);
-      setNote(hall.note);
-      setNoteType((hall.noteType as "" | "warn" | "danger") || "");
-      setBadgesText(hall.badges.map((b) => b.text).join(", "));
-      setBadgesColors(hall.badges.map((b) => b.color).join(", "));
-      setInfoRows(hall.infoGrid.length > 0 ? hall.infoGrid : [{ label: "", value: "" }]);
-      setExtraRows(hall.extraInfoGrid || []);
-      setCalcTitle(hall.calc.title);
-      setCalcRows(
-        hall.calc.rows.length > 0 ? hall.calc.rows : [{ label: "", value: "" }]
-      );
-    }
-  }, [hall]);
+  const toggleTransport = (mode: TransportMode) => {
+    setTransport((prev) =>
+      prev.includes(mode) ? prev.filter((t) => t !== mode) : [...prev, mode]
+    );
+  };
 
   const handleSave = async () => {
-    if (!name.trim()) return alert("웨딩홀 이름을 입력하세요.");
+    if (!name.trim()) {
+      alert("웨딩홀 이름을 입력하세요.");
+      return;
+    }
     setSaving(true);
 
-    const badgeTexts = badgesText.split(",").map((s) => s.trim()).filter(Boolean);
-    const badgeColorArr = badgesColors.split(",").map((s) => s.trim());
-    const badges = badgeTexts.map((text, i) => ({
-      text,
-      color: (badgeColorArr[i] || "gray") as "gold" | "green" | "red" | "amber" | "gray",
-    }));
-
     const data: Omit<WeddingHall, "id"> = {
-      name,
-      sub,
-      price,
-      priceLabel,
-      priceText,
-      priceLevel,
-      ktx,
-      ktxText,
-      ktxWarn: ktxWarn || undefined,
-      parking,
-      isBest: isBest || undefined,
-      bestLabel: bestLabel || undefined,
-      image,
-      imageAlt,
-      imageFallback,
-      badges,
-      infoGrid: infoRows.filter((r) => r.label.trim()),
-      extraInfoGrid:
-        extraRows.filter((r) => r.label.trim()).length > 0
-          ? extraRows.filter((r) => r.label.trim())
-          : undefined,
-      calc: {
-        title: calcTitle,
-        rows: calcRows.filter((r) => r.label.trim()),
-      },
-      note,
-      noteType: noteType || undefined,
+      name: name.trim(),
+      sub: sub.trim(),
+      price: Math.max(0, Math.floor(price) || 0),
+      guests: Math.max(0, Math.floor(guests) || 0),
+      parking: Math.max(0, Math.floor(parking) || 0),
+      transport,
+      note: note.trim(),
     };
 
     const url = isEdit ? `/api/halls/${hall!.id}` : "/api/halls";
@@ -203,283 +163,295 @@ export default function HallFormModal({ hall, onClose, onSaved }: Props) {
     onClose();
   };
 
-  const addInfoRow = () => setInfoRows([...infoRows, { label: "", value: "" }]);
-  const addExtraRow = () => setExtraRows([...extraRows, { label: "", value: "" }]);
-  const addCalcRow = () => setCalcRows([...calcRows, { label: "", value: "" }]);
-
-  const updateInfoRow = (i: number, field: "label" | "value", val: string) => {
-    const rows = [...infoRows];
-    rows[i] = { ...rows[i], [field]: val };
-    setInfoRows(rows);
-  };
-  const updateExtraRow = (i: number, field: "label" | "value", val: string) => {
-    const rows = [...extraRows];
-    rows[i] = { ...rows[i], [field]: val };
-    setExtraRows(rows);
-  };
-  const updateCalcRow = (
-    i: number,
-    field: "label" | "value" | "isTotal",
-    val: string | boolean
-  ) => {
-    const rows = [...calcRows];
-    rows[i] = { ...rows[i], [field]: val };
-    setCalcRows(rows);
-  };
-
-  const removeInfoRow = (i: number) => setInfoRows(infoRows.filter((_, j) => j !== i));
-  const removeExtraRow = (i: number) => setExtraRows(extraRows.filter((_, j) => j !== i));
-  const removeCalcRow = (i: number) => setCalcRows(calcRows.filter((_, j) => j !== i));
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{isEdit ? "웨딩홀 수정" : "새 웨딩홀 등록"}</h2>
-          <button className="modal-close" onClick={onClose}>
-            ✕
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-[#0b0f14] border border-white/10 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.8)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ── Header ────────────────────────────────── */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-white/10">
+          <div>
+            <div className={sectionLabel + " mb-1"}>
+              {isEdit ? "Edit Venue" : "New Venue"}
+            </div>
+            <h2 className="text-lg font-semibold text-white tracking-tight">
+              {isEdit ? "웨딩홀 수정" : "새 웨딩홀 등록"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06] border border-white/10 transition-colors"
+          >
+            <CloseIcon />
           </button>
         </div>
 
-        <div className="modal-body">
+        {/* ── Body ──────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 space-y-6">
           {/* URL로 자동 입력 */}
-          <div className="form-section">
-            <div className="form-section-title">URL로 자동 입력 (선택)</div>
-            <div className="form-group full">
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleFetchPreview();
-                    }
-                  }}
-                  placeholder="웨딩홀 공식 페이지 URL 붙여넣기"
-                  className="flex-1"
-                  disabled={fetchingPreview}
+          <div>
+            <label className={label}>URL로 자동 입력 (선택)</label>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleFetchPreview();
+                  }
+                }}
+                placeholder="웨딩홀 공식 페이지 URL 붙여넣기"
+                className={input + " flex-1"}
+                disabled={fetchingPreview}
+              />
+              <button
+                type="button"
+                onClick={handleFetchPreview}
+                disabled={fetchingPreview}
+                className={ghostBtn + " whitespace-nowrap"}
+              >
+                {fetchingPreview ? "불러오는 중..." : "가져오기"}
+              </button>
+            </div>
+            {previewError && (
+              <div className="mt-2 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/10 border border-red-400/20 px-3 py-2 rounded-lg">
+                <TwEmoji
+                  emoji="⚠️"
+                  size={13}
+                  className="flex-shrink-0 mt-0.5"
                 />
+                <span className="leading-relaxed">{previewError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* 웨딩홀 이름 */}
+          <div>
+            <label className={label}>웨딩홀 이름 *</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 제이오스티엘"
+              className={input}
+            />
+          </div>
+
+          {/* 위치 */}
+          <div>
+            <label className={label}>위치</label>
+            <input
+              value={sub}
+              onChange={(e) => setSub(e.target.value)}
+              placeholder="예: 서울 구로구"
+              className={input}
+            />
+          </div>
+
+          {/* 예상 가격 + 색상 dot */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-[10px] font-medium text-white/50 uppercase tracking-wider">
+                예상 가격
+              </span>
+              {priceLevel && (
                 <button
                   type="button"
-                  onClick={handleFetchPreview}
-                  disabled={fetchingPreview}
-                  className="btn-add whitespace-nowrap"
+                  onClick={() => setShowGradeGuide((v) => !v)}
+                  aria-label="등급 안내"
+                  className="w-4 h-4 flex items-center justify-center rounded-full bg-white/[0.08] text-white/40 hover:text-mint hover:bg-mint/10 transition-colors text-[10px] font-bold leading-none"
                 >
-                  {fetchingPreview ? "불러오는 중..." : "가져오기"}
+                  ?
                 </button>
-              </div>
-              {previewError && (
-                <div className="text-[11px] text-[var(--red)] mt-1.5">
-                  {previewError}
-                </div>
               )}
-              <div className="text-[10px] text-[var(--ink3)] mt-1.5 leading-relaxed">
-                URL의 OG/meta 태그를 가져와 비어있는 이름·이미지·설명 필드를 자동 채웁니다. 이미 입력한 값은 덮어쓰지 않아요.
-              </div>
             </div>
-          </div>
-
-          {/* 기본 정보 */}
-          <div className="form-section">
-            <div className="form-section-title">기본 정보</div>
-            <div className="form-grid">
-              <div className="form-group full">
-                <label>웨딩홀 이름 *</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 제이오스티엘" />
-              </div>
-              <div className="form-group full">
-                <label>위치 설명</label>
-                <input value={sub} onChange={(e) => setSub(e.target.value)} placeholder="예: 서울 구로구 · 1호선 구로역 도보 2분" />
-              </div>
-              <div className="form-group">
-                <label>예상 가격 (만원, 숫자)</label>
-                <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-              </div>
-              <div className="form-group">
-                <label>가격 표시 텍스트</label>
-                <input value={priceText} onChange={(e) => setPriceText(e.target.value)} placeholder="예: 약 1,367만원" />
-              </div>
-              <div className="form-group">
-                <label>가격 기준</label>
-                <input value={priceLabel} onChange={(e) => setPriceLabel(e.target.value)} placeholder="예: 180명 기준" />
-              </div>
-              <div className="form-group">
-                <label>가격 등급</label>
-                <select value={priceLevel} onChange={(e) => setPriceLevel(e.target.value as "ok" | "warn" | "over")}>
-                  <option value="ok">적정 (초록)</option>
-                  <option value="warn">주의 (노랑)</option>
-                  <option value="over">초과 (빨강)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* 교통 & 주차 */}
-          <div className="form-section">
-            <div className="form-section-title">교통 & 주차</div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>KTX 접근성 (1~5)</label>
-                <input type="number" min={1} max={5} value={ktx} onChange={(e) => setKtx(Number(e.target.value))} />
-              </div>
-              <div className="form-group">
-                <label>주차 대수</label>
-                <input type="number" value={parking} onChange={(e) => setParking(Number(e.target.value))} />
-              </div>
-              <div className="form-group full">
-                <label>KTX 경로 설명</label>
-                <input value={ktxText} onChange={(e) => setKtxText(e.target.value)} placeholder="예: 서울역 → 1호선 직행 · 약 20분" />
-              </div>
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={ktxWarn} onChange={(e) => setKtxWarn(e.target.checked)} />
-                  KTX 접근 불편 (경고 표시)
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* 이미지 */}
-          <div className="form-section">
-            <div className="form-section-title">이미지</div>
-            <div className="form-grid">
-              <div className="form-group full">
-                <label>이미지 URL</label>
-                <input value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://..." />
-              </div>
-              <div className="form-group">
-                <label>이미지 alt 텍스트</label>
-                <input value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>대체 이모지</label>
-                <input value={imageFallback} onChange={(e) => setImageFallback(e.target.value)} placeholder="🏛️" />
-              </div>
-            </div>
-          </div>
-
-          {/* 추천 */}
-          <div className="form-section">
-            <div className="form-section-title">추천 설정</div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={isBest} onChange={(e) => setIsBest(e.target.checked)} />
-                  추천 웨딩홀로 표시
-                </label>
-              </div>
-              <div className="form-group">
-                <label>추천 라벨</label>
-                <input value={bestLabel} onChange={(e) => setBestLabel(e.target.value)} placeholder="예: ★ 가격 최우선 추천" />
-              </div>
-            </div>
-          </div>
-
-          {/* 뱃지 */}
-          <div className="form-section">
-            <div className="form-section-title">뱃지</div>
-            <div className="form-grid">
-              <div className="form-group full">
-                <label>뱃지 텍스트 (쉼표 구분)</label>
-                <input value={badgesText} onChange={(e) => setBadgesText(e.target.value)} placeholder="가격 1위, KTX 접근성 ★★★★★, 단독홀" />
-              </div>
-              <div className="form-group full">
-                <label>뱃지 색상 (쉼표 구분: gold/green/red/amber/gray)</label>
-                <input value={badgesColors} onChange={(e) => setBadgesColors(e.target.value)} placeholder="gold, green, green" />
-              </div>
-            </div>
-          </div>
-
-          {/* 정보 그리드 */}
-          <div className="form-section">
-            <div className="form-section-title">
-              상세 정보
-              <button className="btn-add" onClick={addInfoRow}>+ 행 추가</button>
-            </div>
-            {infoRows.map((row, i) => (
-              <div key={i} className="form-grid mb-1">
-                <div className="form-group">
-                  <input value={row.label} onChange={(e) => updateInfoRow(i, "label", e.target.value)} placeholder="항목명" />
+            {showGradeGuide && priceLevel && (
+              <div className="mb-2 p-3 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] leading-relaxed space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <span className="text-white/80">
+                    <span className="font-semibold text-emerald-400">적정</span>
+                    {" — "}예산 이내
+                  </span>
                 </div>
-                <div className="form-group flex gap-1">
-                  <input value={row.value} onChange={(e) => updateInfoRow(i, "value", e.target.value)} placeholder="값" className="flex-1" />
-                  <button className="btn-remove" onClick={() => removeInfoRow(i)}>✕</button>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                  <span className="text-white/80">
+                    <span className="font-semibold text-amber-400">주의</span>
+                    {" — "}예산 대비 +10% 이내
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                  <span className="text-white/80">
+                    <span className="font-semibold text-red-400">초과</span>
+                    {" — "}예산 대비 +10% 초과
+                  </span>
+                </div>
+                <div className="pt-1 mt-1 border-t border-white/10 text-white/40">
+                  기준: 결혼 예산 → 웨딩홀 카테고리 {hallBudget.toLocaleString()}
+                  만원
                 </div>
               </div>
-            ))}
+            )}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={10}
+                  value={price || ""}
+                  onChange={(e) => setPrice(parseInt(e.target.value, 10) || 0)}
+                  placeholder="0"
+                  className={input + " pr-12"}
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] text-white/40 pointer-events-none">
+                  만원
+                </span>
+              </div>
+              {/* 색상 dot — 예산 항목이 설정된 경우에만 노출 */}
+              <div
+                className={
+                  "flex-shrink-0 w-11 h-11 rounded-lg border flex items-center justify-center " +
+                  (priceLevel === "ok"
+                    ? "bg-emerald-500/10 border-emerald-400/30"
+                    : priceLevel === "warn"
+                      ? "bg-amber-500/10 border-amber-400/30"
+                      : priceLevel === "over"
+                        ? "bg-red-500/10 border-red-400/30"
+                        : "bg-white/[0.02] border-white/10")
+                }
+                aria-label={
+                  priceLevel === "ok"
+                    ? "적정"
+                    : priceLevel === "warn"
+                      ? "주의"
+                      : priceLevel === "over"
+                        ? "초과"
+                        : "예산 미설정"
+                }
+              >
+                <span
+                  className={
+                    "w-3 h-3 rounded-full " +
+                    (priceLevel === "ok"
+                      ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)]"
+                      : priceLevel === "warn"
+                        ? "bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]"
+                        : priceLevel === "over"
+                          ? "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.6)]"
+                          : "bg-white/20")
+                  }
+                />
+              </div>
+            </div>
+            {!priceLevel && hallBudget <= 0 && (
+              <div className="text-[11px] text-white/40 mt-1.5 leading-relaxed">
+                예산 등급 표시는 결혼 예산 → 웨딩홀 항목을 먼저 설정하면
+                활성화됩니다.
+              </div>
+            )}
           </div>
 
-          {/* 추가 정보 그리드 */}
-          <div className="form-section">
-            <div className="form-section-title">
-              추가 정보 (선택)
-              <button className="btn-add" onClick={addExtraRow}>+ 행 추가</button>
+          {/* 보증인원 */}
+          <div>
+            <label className={label}>보증인원</label>
+            <div className="relative">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={10}
+                value={guests || ""}
+                onChange={(e) => setGuests(parseInt(e.target.value, 10) || 0)}
+                placeholder="0"
+                className={input + " pr-12"}
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] text-white/40 pointer-events-none">
+                명
+              </span>
             </div>
-            {extraRows.map((row, i) => (
-              <div key={i} className="form-grid mb-1">
-                <div className="form-group">
-                  <input value={row.label} onChange={(e) => updateExtraRow(i, "label", e.target.value)} placeholder="항목명" />
-                </div>
-                <div className="form-group flex gap-1">
-                  <input value={row.value} onChange={(e) => updateExtraRow(i, "value", e.target.value)} placeholder="값" className="flex-1" />
-                  <button className="btn-remove" onClick={() => removeExtraRow(i)}>✕</button>
-                </div>
-              </div>
-            ))}
           </div>
 
-          {/* 견적 계산 */}
-          <div className="form-section">
-            <div className="form-section-title">
-              예상 견적
-              <button className="btn-add" onClick={addCalcRow}>+ 행 추가</button>
+          {/* 주차 수 */}
+          <div>
+            <label className={label}>주차 수</label>
+            <div className="relative">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={10}
+                value={parking || ""}
+                onChange={(e) => setParking(parseInt(e.target.value, 10) || 0)}
+                placeholder="0"
+                className={input + " pr-12"}
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] text-white/40 pointer-events-none">
+                대
+              </span>
             </div>
-            <div className="form-group mb-2">
-              <label>견적 타이틀</label>
-              <input value={calcTitle} onChange={(e) => setCalcTitle(e.target.value)} />
+          </div>
+
+          {/* 교통편 */}
+          <div>
+            <label className={label}>교통편</label>
+            <div className="flex flex-wrap gap-2">
+              {TRANSPORT_META.map((t) => {
+                const active = transport.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => toggleTransport(t.id)}
+                    className={
+                      "inline-flex items-center gap-2 h-11 px-4 rounded-lg text-xs font-medium transition-colors " +
+                      (active
+                        ? "bg-mint/15 text-mint border border-mint/40 shadow-[0_0_20px_-6px_rgba(0,255,225,0.4)]"
+                        : "bg-white/[0.04] text-white/60 border border-white/10 hover:text-white hover:bg-white/[0.08]")
+                    }
+                    aria-pressed={active}
+                  >
+                    <TwEmoji emoji={t.icon} size={14} />
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
-            {calcRows.map((row, i) => (
-              <div key={i} className="form-grid mb-1">
-                <div className="form-group">
-                  <input value={row.label} onChange={(e) => updateCalcRow(i, "label", e.target.value)} placeholder="항목" />
-                </div>
-                <div className="form-group flex gap-1 items-center">
-                  <input value={row.value} onChange={(e) => updateCalcRow(i, "value", e.target.value)} placeholder="금액" className="flex-1" />
-                  <label className="checkbox-label !text-[10px] whitespace-nowrap">
-                    <input type="checkbox" checked={row.isTotal || false} onChange={(e) => updateCalcRow(i, "isTotal", e.target.checked)} />
-                    합계
-                  </label>
-                  <button className="btn-remove" onClick={() => removeCalcRow(i)}>✕</button>
-                </div>
-              </div>
-            ))}
           </div>
 
           {/* 메모 */}
-          <div className="form-section">
-            <div className="form-section-title">메모</div>
-            <div className="form-grid">
-              <div className="form-group full">
-                <label>메모 / 특이사항</label>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="이 웨딩홀에 대한 메모를 남겨주세요..." />
-              </div>
-              <div className="form-group">
-                <label>메모 스타일</label>
-                <select value={noteType} onChange={(e) => setNoteType(e.target.value as "" | "warn" | "danger")}>
-                  <option value="">기본</option>
-                  <option value="warn">주의 (노랑)</option>
-                  <option value="danger">경고 (빨강)</option>
-                </select>
-              </div>
-            </div>
+          <div>
+            <label className={label}>메모</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="이 웨딩홀에 대한 메모를 남겨주세요..."
+              className={textarea}
+            />
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>취소</button>
-          <button className="btn-save" onClick={handleSave} disabled={saving}>
+        {/* ── Footer ────────────────────────────────── */}
+        <div className="flex items-center justify-end gap-2 px-6 sm:px-8 py-4 border-t border-white/10 bg-white/[0.02]">
+          <button type="button" onClick={onClose} className={ghostBtn}>
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className={primaryBtn}
+          >
             {saving ? "저장 중..." : isEdit ? "수정 완료" : "등록하기"}
           </button>
         </div>

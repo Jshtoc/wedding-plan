@@ -1,7 +1,9 @@
 import type React from "react";
 import {
   BudgetItem,
-  BUDGET_CATEGORIES,
+  getItemMeta,
+  isCustomCategory,
+  isTotalCategory,
   totalBudget,
 } from "@/data/budgets";
 import TwEmoji from "./TwEmoji";
@@ -26,16 +28,23 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
  */
 export default function BudgetDonutChart({ items }: Props) {
   const total = totalBudget(items);
-  const budgetByCategory = new Map(
-    items.map((i) => [i.category, i.budget || 0])
-  );
+  // Iterate draft items directly (fixed first by withDefaults, then
+  // custom) so user-added rows show up in the chart and legend.
+  // Strip the `total` pseudo-row; it is a target, not a segment.
+  const visible = items.filter((i) => !isTotalCategory(i.category));
 
   let cumulativePct = 0;
-  const segments = BUDGET_CATEGORIES.map((cat) => {
-    const value = budgetByCategory.get(cat.id) || 0;
+  let customIdx = 0;
+  const segments = visible.map((item) => {
+    const meta = getItemMeta(
+      item,
+      isCustomCategory(item.category) ? customIdx++ : 0
+    );
+    const value = item.budget || 0;
     const pct = total > 0 ? (value / total) * 100 : 0;
     const segment = {
-      meta: cat,
+      key: item.category,
+      meta,
       value,
       pct,
       dashArray: `${(pct / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`,
@@ -66,7 +75,7 @@ export default function BudgetDonutChart({ items }: Props) {
                 (s) =>
                   s.pct > 0 && (
                     <circle
-                      key={s.meta.id}
+                      key={s.key}
                       cx={CENTER}
                       cy={CENTER}
                       r={RADIUS}
@@ -107,7 +116,7 @@ export default function BudgetDonutChart({ items }: Props) {
       {/* Legend */}
       <div className="flex-1 w-full min-w-0 space-y-2">
         {segments.map((s) => (
-          <div key={s.meta.id} className="flex items-center gap-3">
+          <div key={s.key} className="flex items-center gap-3">
             <div
               className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[var(--dot)]"
               // eslint-disable-next-line react/forbid-dom-props

@@ -1,15 +1,37 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { WeddingHall } from "@/data/halls";
-import { BudgetItem, withDefaults } from "@/data/budgets";
+import {
+  WeddingHall,
+  TRANSPORT_META,
+  computePriceLevel,
+} from "@/data/halls";
+import {
+  BudgetItem,
+  isCustomCategory,
+  withDefaults,
+} from "@/data/budgets";
+import { WeddingEvent } from "@/data/events";
+import {
+  DressTarget,
+  Vendor,
+  VENDOR_CATEGORIES,
+  VendorCategory,
+} from "@/data/vendors";
 import { supabase } from "@/lib/supabase";
 import HallFormModal from "./HallFormModal";
+import EventFormModal from "./EventFormModal";
+import VendorFormModal from "./VendorFormModal";
+import VendorListSection from "./sections/VendorListSection";
 import TwEmoji from "./ui/TwEmoji";
 import OverviewSection from "./sections/OverviewSection";
 import BudgetSection from "./sections/BudgetSection";
 
-type Section =
+/**
+ * Active section id. Fixed ids are the 7 built-in menu items; any
+ * other string is a custom budget category (`custom:<rand>`).
+ */
+type FixedSection =
   | "overview"
   | "halls"
   | "studios"
@@ -17,7 +39,8 @@ type Section =
   | "makeup"
   | "budget"
   | "routes";
-type SortType = "default" | "price" | "ktx" | "parking";
+type Section = FixedSection | string;
+type SortType = "default" | "price" | "guests" | "parking";
 
 interface SectionDef {
   id: Section;
@@ -41,10 +64,22 @@ export default function WeddingApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [halls, setHalls] = useState<WeddingHall[]>([]);
   const [budgets, setBudgets] = useState<BudgetItem[]>(() => withDefaults([]));
+  const [events, setEvents] = useState<WeddingEvent[]>([]);
+  const [studios, setStudios] = useState<Vendor[]>([]);
+  const [dresses, setDresses] = useState<Vendor[]>([]);
+  const [makeups, setMakeups] = useState<Vendor[]>([]);
+  const [vendorsLoading, setVendorsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingHall, setEditingHall] = useState<WeddingHall | null>(null);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<WeddingEvent | null>(null);
+  const [vendorModal, setVendorModal] = useState<{
+    category: VendorCategory;
+    editing: Vendor | null;
+    defaultTarget?: DressTarget;
+  } | null>(null);
   const [sortType, setSortType] = useState<SortType>("default");
 
   const fetchHalls = useCallback(async () => {
@@ -85,15 +120,73 @@ export default function WeddingApp() {
     }
   }, []);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await fetch("/api/events");
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setEvents(data);
+      }
+    } catch {
+      // silent — events are optional; default to empty
+    }
+  }, []);
+
+  // Fetch all three vendor categories in parallel. Used on mount and
+  // whenever realtime signals a change.
+  const fetchVendors = useCallback(async () => {
+    const load = async (
+      cat: VendorCategory,
+      setter: (v: Vendor[]) => void
+    ) => {
+      try {
+        const res = await fetch(`/api/vendors/${cat}`);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) setter(data);
+      } catch {
+        // silent — vendor lists are optional
+      }
+    };
+    await Promise.all([
+      load("studio", setStudios),
+      load("dress", setDresses),
+      load("makeup", setMakeups),
+    ]);
+    setVendorsLoading(false);
+  }, []);
+
   useEffect(() => {
     fetchHalls();
     fetchBudgets();
-  }, [fetchHalls, fetchBudgets]);
+    fetchEvents();
+    fetchVendors();
+  }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors]);
 
-  // Realtime sync — when the other user updates halls or budgets,
-  // re-fetch so both sessions stay in sync automatically. Supabase uses
-  // Postgres logical replication; the supabase_realtime publication
-  // must include these tables (see supabase/realtime.sql).
+  // Custom budget items that should appear as sidebar tabs. Only
+  // items with a non-empty label get a tab — empty placeholders (rows
+  // the user added but never named) are hidden.
+  const customSections = useMemo(
+    () =>
+      budgets.filter(
+        (b) => isCustomCategory(b.category) && (b.label ?? "").trim()
+      ),
+    [budgets]
+  );
+
+  // If the active section refers to a custom item that no longer
+  // exists (deleted by this user or the other), snap back to overview.
+  useEffect(() => {
+    if (isCustomCategory(active)) {
+      const exists = customSections.some((c) => c.category === active);
+      if (!exists) setActive("overview");
+    }
+  }, [customSections, active]);
+
+  // Realtime sync — when the other user updates halls / budgets /
+  // events, re-fetch so both sessions stay in sync automatically.
+  // Supabase uses Postgres logical replication; all three tables
+  // must be in the supabase_realtime publication (see
+  // supabase/realtime.sql and supabase/events.sql).
   useEffect(() => {
     const channel = supabase
       .channel("wwp-shared")
@@ -111,12 +204,40 @@ export default function WeddingApp() {
           fetchBudgets();
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        () => {
+          fetchEvents();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "studios" },
+        () => {
+          fetchVendors();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dresses" },
+        () => {
+          fetchVendors();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "makeups" },
+        () => {
+          fetchVendors();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchHalls, fetchBudgets]);
+  }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors]);
 
   const sortedHalls = useMemo(() => {
     const sorted = [...halls];
@@ -124,8 +245,8 @@ export default function WeddingApp() {
       case "price":
         sorted.sort((a, b) => a.price - b.price);
         break;
-      case "ktx":
-        sorted.sort((a, b) => b.ktx - a.ktx);
+      case "guests":
+        sorted.sort((a, b) => a.guests - b.guests);
         break;
       case "parking":
         sorted.sort((a, b) => b.parking - a.parking);
@@ -158,12 +279,59 @@ export default function WeddingApp() {
     fetchHalls();
   };
 
+  const handleAddEvent = () => {
+    setEditingEvent(null);
+    setShowEventModal(true);
+  };
+  const handleEditEvent = (ev: WeddingEvent) => {
+    setEditingEvent(ev);
+    setShowEventModal(true);
+  };
+
+  // Vendor CRUD — one set of handlers drives studio/dress/makeup.
+  const handleVendorAdd = (
+    category: VendorCategory,
+    defaultTarget?: DressTarget
+  ) => {
+    setVendorModal({ category, editing: null, defaultTarget });
+  };
+  const handleVendorEdit = (category: VendorCategory, v: Vendor) => {
+    setVendorModal({ category, editing: v });
+  };
+
+  // Map the active sidebar section id to a vendor category (or null
+  // when the active section isn't a vendor list).
+  const activeVendorCategory: VendorCategory | null =
+    active === "studios"
+      ? "studio"
+      : active === "dresses"
+        ? "dress"
+        : active === "makeup"
+          ? "makeup"
+          : null;
+
   const handleSelectSection = (id: Section) => {
     setActive(id);
     setSidebarOpen(false);
   };
 
-  const activeSection = SECTIONS.find((s) => s.id === active)!;
+  // Resolve the currently-active section's metadata. For fixed ids we
+  // look it up in SECTIONS; for custom ids we synthesize metadata
+  // from the matching budget row.
+  const activeSection: SectionDef = useMemo(() => {
+    const fixed = SECTIONS.find((s) => s.id === active);
+    if (fixed) return fixed;
+    const custom = customSections.find((c) => c.category === active);
+    if (custom) {
+      return {
+        id: custom.category,
+        label: custom.label || "항목",
+        icon: custom.icon || "📌",
+        subtitle: "사용자 추가 항목",
+      };
+    }
+    return SECTIONS[0];
+  }, [active, customSections]);
 
   return (
     <div className="min-h-[100dvh] bg-[#020806] text-white">
@@ -242,6 +410,49 @@ export default function WeddingApp() {
               </button>
             );
           })}
+
+          {/* Custom budget items — dynamic tabs derived from the
+              user's added budget categories. */}
+          {customSections.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-4 text-[9px] font-semibold text-white/30 uppercase tracking-[0.3em]">
+                My Items
+              </div>
+              {customSections.map((c) => {
+                const isActive = c.category === active;
+                return (
+                  <button
+                    key={c.category}
+                    type="button"
+                    onClick={() => handleSelectSection(c.category)}
+                    className={
+                      "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all " +
+                      (isActive
+                        ? "bg-mint/15 text-mint border border-mint/30 shadow-[0_0_24px_-8px_rgba(0,255,225,0.4)]"
+                        : "text-white/60 hover:text-white hover:bg-white/[0.04] border border-transparent")
+                    }
+                  >
+                    <TwEmoji emoji={c.icon || "📌"} size={18} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium leading-tight truncate">
+                        {c.label}
+                      </div>
+                      <div
+                        className={
+                          "text-[10px] mt-0.5 truncate tabular-nums " +
+                          (isActive ? "text-mint/60" : "text-white/30")
+                        }
+                      >
+                        {c.budget > 0
+                          ? `${c.budget.toLocaleString()}만원`
+                          : "예산 미설정"}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Footer: logo + logout */}
@@ -353,12 +564,19 @@ export default function WeddingApp() {
           {active === "overview" && (
             <OverviewSection
               hallsCount={halls.length}
+              studiosCount={studios.length}
+              dressesCount={dresses.length}
+              makeupsCount={makeups.length}
               budgets={budgets}
+              events={events}
+              onAddEvent={handleAddEvent}
+              onEditEvent={handleEditEvent}
             />
           )}
           {active === "halls" && (
             <HallsSection
               halls={sortedHalls}
+              budgets={budgets}
               loading={loading}
               fetchError={fetchError}
               sortType={sortType}
@@ -367,17 +585,44 @@ export default function WeddingApp() {
               onDelete={handleDelete}
             />
           )}
-          {active === "studios" && <StubSection icon="📸" name="스튜디오" />}
-          {active === "dresses" && <DressesStubSection />}
-          {active === "makeup" && <StubSection icon="💄" name="메이크업" />}
+          {active === "studios" && (
+            <VendorListSection
+              category="studio"
+              vendors={studios}
+              loading={vendorsLoading}
+              onEdit={(v) => handleVendorEdit("studio", v)}
+            />
+          )}
+          {active === "dresses" && (
+            <VendorListSection
+              category="dress"
+              vendors={dresses}
+              loading={vendorsLoading}
+              onEdit={(v) => handleVendorEdit("dress", v)}
+            />
+          )}
+          {active === "makeup" && (
+            <VendorListSection
+              category="makeup"
+              vendors={makeups}
+              loading={vendorsLoading}
+              onEdit={(v) => handleVendorEdit("makeup", v)}
+            />
+          )}
           {active === "budget" && (
             <BudgetSection initial={budgets} onSaved={setBudgets} />
           )}
           {active === "routes" && <RoutesStubSection />}
+          {isCustomCategory(active) &&
+            (() => {
+              const item = customSections.find((c) => c.category === active);
+              if (!item) return null;
+              return <CustomSection item={item} />;
+            })()}
         </main>
       </div>
 
-      {/* ── FAB (halls only) ─────────────── */}
+      {/* ── FAB (list sections: halls + vendors) ─────────────── */}
       {active === "halls" && (
         <button
           type="button"
@@ -388,13 +633,40 @@ export default function WeddingApp() {
           +
         </button>
       )}
+      {activeVendorCategory && (
+        <button
+          type="button"
+          onClick={() => handleVendorAdd(activeVendorCategory)}
+          aria-label={`${VENDOR_CATEGORIES[activeVendorCategory].label} 추가`}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
+        >
+          +
+        </button>
+      )}
 
-      {/* ── Modal ────────────────────────── */}
+      {/* ── Modals ───────────────────────── */}
       {showModal && (
         <HallFormModal
           hall={editingHall}
+          budgets={budgets}
           onClose={() => setShowModal(false)}
           onSaved={fetchHalls}
+        />
+      )}
+      {showEventModal && (
+        <EventFormModal
+          event={editingEvent}
+          onClose={() => setShowEventModal(false)}
+          onSaved={fetchEvents}
+        />
+      )}
+      {vendorModal && (
+        <VendorFormModal
+          category={vendorModal.category}
+          vendor={vendorModal.editing}
+          defaultTarget={vendorModal.defaultTarget}
+          onClose={() => setVendorModal(null)}
+          onSaved={fetchVendors}
         />
       )}
     </div>
@@ -407,6 +679,7 @@ export default function WeddingApp() {
 
 interface HallsSectionProps {
   halls: WeddingHall[];
+  budgets: BudgetItem[];
   loading: boolean;
   fetchError: string | null;
   sortType: SortType;
@@ -417,6 +690,7 @@ interface HallsSectionProps {
 
 function HallsSection({
   halls,
+  budgets,
   loading,
   fetchError,
   sortType,
@@ -427,9 +701,11 @@ function HallsSection({
   const sortOptions: { type: SortType; label: string }[] = [
     { type: "default", label: "기본" },
     { type: "price", label: "가격 낮은순" },
-    { type: "ktx", label: "KTX 접근성순" },
+    { type: "guests", label: "보증인원순" },
     { type: "parking", label: "주차 많은순" },
   ];
+
+  const hallBudget = budgets.find((b) => b.category === "hall")?.budget ?? 0;
 
   if (loading) {
     return <SkeletonGrid />;
@@ -481,6 +757,7 @@ function HallsSection({
           <DarkHallCard
             key={hall.id}
             hall={hall}
+            hallBudget={hallBudget}
             onEdit={onEdit}
             onDelete={onDelete}
           />
@@ -492,107 +769,127 @@ function HallsSection({
 
 interface DarkHallCardProps {
   hall: WeddingHall;
+  hallBudget: number;
   onEdit: (h: WeddingHall) => void;
   onDelete: (id: number) => void;
 }
 
-function DarkHallCard({ hall, onEdit, onDelete }: DarkHallCardProps) {
-  const [imgError, setImgError] = useState(false);
+function DarkHallCard({
+  hall,
+  hallBudget,
+  onEdit,
+  onDelete,
+}: DarkHallCardProps) {
+  const priceLevel = computePriceLevel(hall.price, hallBudget);
 
   const priceColor =
-    hall.priceLevel === "ok"
-      ? "text-mint"
-      : hall.priceLevel === "warn"
+    priceLevel === "ok"
+      ? "text-emerald-300"
+      : priceLevel === "warn"
         ? "text-amber-300"
-        : "text-red-300";
+        : priceLevel === "over"
+          ? "text-red-300"
+          : "text-white";
+
+  const dotColor =
+    priceLevel === "ok"
+      ? "bg-emerald-400"
+      : priceLevel === "warn"
+        ? "bg-amber-400"
+        : priceLevel === "over"
+          ? "bg-red-400"
+          : "bg-white/20";
 
   return (
-    <div className="group bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden transition-colors hover:border-white/20">
-      {/* Image */}
-      <div className="relative aspect-[16/10] bg-black/30">
-        {hall.image && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={hall.image}
-            alt={hall.imageAlt}
-            className="w-full h-full object-cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <TwEmoji emoji={hall.imageFallback} size={48} />
+    <div className="group bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 transition-colors hover:border-white/20">
+      {/* Header row — name + price */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-white leading-tight truncate">
+            {hall.name}
+          </h3>
+          {hall.sub && (
+            <p className="text-[11px] text-white/50 mt-1 truncate">
+              {hall.sub}
+            </p>
+          )}
+        </div>
+        <div className="text-right flex-shrink-0 flex items-center gap-2">
+          {priceLevel && (
+            <span
+              className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`}
+              aria-hidden="true"
+            />
+          )}
+          <div>
+            <div className="text-[10px] text-white/40">예상</div>
+            <div className={`text-sm font-semibold tabular-nums ${priceColor}`}>
+              {hall.price > 0 ? `${hall.price.toLocaleString()}만` : "-"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Info strip — guests / parking */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/60 mb-3">
+        {hall.guests > 0 && (
+          <div className="flex items-center gap-1.5">
+            <TwEmoji emoji="👥" size={12} />
+            <span className="tabular-nums">
+              보증 {hall.guests.toLocaleString()}명
+            </span>
           </div>
         )}
-        {hall.isBest && hall.bestLabel && (
-          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-mint text-gray-900 text-[10px] font-semibold tracking-wide">
-            {hall.bestLabel}
+        {hall.parking > 0 && (
+          <div className="flex items-center gap-1.5">
+            <TwEmoji emoji="🅿️" size={12} />
+            <span className="tabular-nums">
+              주차 {hall.parking.toLocaleString()}대
+            </span>
           </div>
         )}
       </div>
 
-      {/* Body */}
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0">
-            <h3 className="text-base font-semibold text-white leading-tight">
-              {hall.name}
-            </h3>
-            <p className="text-[11px] text-white/50 mt-1 truncate">
-              {hall.sub}
-            </p>
-          </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-[10px] text-white/40">{hall.priceLabel}</div>
-            <div className={`text-sm font-semibold ${priceColor}`}>
-              {hall.priceText}
-            </div>
-          </div>
-        </div>
-
-        {/* Badges */}
-        {hall.badges.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {hall.badges.slice(0, 3).map((b, i) => (
+      {/* Transport pills */}
+      {hall.transport.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {TRANSPORT_META.filter((t) => hall.transport.includes(t.id)).map(
+            (t) => (
               <span
-                key={i}
-                className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-white/70"
+                key={t.id}
+                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-mint/10 border border-mint/20 text-mint/90"
               >
-                {b.text}
+                <TwEmoji emoji={t.icon} size={11} />
+                {t.label}
               </span>
-            ))}
-          </div>
-        )}
-
-        {/* KTX row */}
-        <div className="flex items-center gap-2 text-[11px] text-white/60 mb-3">
-          <TwEmoji emoji={hall.ktxWarn ? "🚇" : "🚄"} size={12} />
-          <span className="truncate">{hall.ktxText}</span>
+            )
+          )}
         </div>
+      )}
 
-        {/* Note */}
-        {hall.note && (
-          <div className="text-[11px] text-white/50 leading-relaxed line-clamp-3 mb-4">
-            {hall.note}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(hall)}
-            className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/[0.1] transition-colors"
-          >
-            <TwEmoji emoji="✏️" size={12} /> 수정
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(hall.id)}
-            className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-red-500/10 border border-red-400/20 text-xs text-red-300 hover:bg-red-500/20 transition-colors"
-          >
-            <TwEmoji emoji="🗑️" size={12} /> 삭제
-          </button>
+      {/* Note */}
+      {hall.note && (
+        <div className="text-[11px] text-white/50 leading-relaxed line-clamp-3 mb-4">
+          {hall.note}
         </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onEdit(hall)}
+          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/[0.1] transition-colors"
+        >
+          <TwEmoji emoji="✏️" size={12} /> 수정
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(hall.id)}
+          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-red-500/10 border border-red-400/20 text-xs text-red-300 hover:bg-red-500/20 transition-colors"
+        >
+          <TwEmoji emoji="🗑️" size={12} /> 삭제
+        </button>
       </div>
     </div>
   );
@@ -600,68 +897,36 @@ function DarkHallCard({ hall, onEdit, onDelete }: DarkHallCardProps) {
 
 /* ── Stub sections ────────────────────────── */
 
-interface StubSectionProps {
-  icon: string;
-  name: string;
-}
-
-function StubSection({ icon, name }: StubSectionProps) {
-  return (
-    <EmptyState
-      icon={icon}
-      title={`${name} 섹션 초안`}
-      description={`${name} 데이터 모델과 UI를 설계 중입니다. 곧 등록/비교/정렬 기능을 제공할 예정이에요.`}
-    />
-  );
-}
-
-function DressesStubSection() {
-  const [subTab, setSubTab] = useState<"groom" | "bride">("bride");
-
-  return (
-    <div>
-      <div className="inline-flex p-1 bg-white/[0.04] border border-white/10 rounded-xl mb-6">
-        <button
-          type="button"
-          onClick={() => setSubTab("bride")}
-          className={
-            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors " +
-            (subTab === "bride"
-              ? "bg-mint text-gray-900"
-              : "text-white/60 hover:text-white")
-          }
-        >
-          <TwEmoji emoji="👰" size={14} /> 신부
-        </button>
-        <button
-          type="button"
-          onClick={() => setSubTab("groom")}
-          className={
-            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors " +
-            (subTab === "groom"
-              ? "bg-mint text-gray-900"
-              : "text-white/60 hover:text-white")
-          }
-        >
-          <TwEmoji emoji="🤵" size={14} /> 신랑
-        </button>
-      </div>
-
-      <EmptyState
-        icon="👰"
-        title={`${subTab === "bride" ? "신부" : "신랑"} 드레스 섹션 초안`}
-        description="드레스 샵, 대여/맞춤 구분, 피팅 일정 등 데이터 모델을 설계 중이에요."
-      />
-    </div>
-  );
-}
-
 function RoutesStubSection() {
   return (
     <EmptyState
       icon="🗺️"
       title="동선 계산 초안"
       description="선택한 웨딩홀 / 스튜디오 / 드레스 샵 / 메이크업 샵을 기반으로 하루 투어 최적 경로를 계산합니다. 곧 구현 예정."
+    />
+  );
+}
+
+interface CustomSectionProps {
+  item: BudgetItem;
+}
+
+/**
+ * Placeholder content for a user-added budget category. For now it
+ * just shows the item's budget and an empty-state hint — later this
+ * is where per-category lists / CRUD UI can live.
+ */
+function CustomSection({ item }: CustomSectionProps) {
+  const label = item.label || "항목";
+  return (
+    <EmptyState
+      icon={item.icon || "📌"}
+      title={`${label} 섹션`}
+      description={
+        item.budget > 0
+          ? `${label} 관련 정보를 등록할 수 있는 공간입니다. 현재 ${item.budget.toLocaleString()}만원 배정됨.`
+          : `${label} 관련 정보를 등록할 수 있는 공간입니다. 결혼 예산 → ${label}에서 금액을 배정해보세요.`
+      }
     />
   );
 }
