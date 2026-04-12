@@ -237,6 +237,18 @@ export default function WeddingApp() {
     fetchAssets();
   }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors, fetchComplexes, fetchAssets]);
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
   // Custom budget items that should appear as sidebar tabs. Only
   // items with a non-empty label get a tab — empty placeholders (rows
   // the user added but never named) are hidden.
@@ -652,45 +664,33 @@ export default function WeddingApp() {
         />
       )}
 
+      {/* ── Mobile FAB hamburger (bottom-right) ──────── */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="메뉴 열기"
+          className="md:hidden fixed bottom-6 right-5 z-50 w-12 h-12 rounded-2xl bg-mint text-gray-900 flex items-center justify-center shadow-[0_8px_32px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* ── Main column (desktop left-padded for sidebar) ── */}
       <div className="md:pl-72 min-h-[100dvh] flex flex-col">
-        {/* Mobile top bar */}
-        <header className="md:hidden sticky top-0 z-30 p-0 text-left border-b border-white/10 bg-[#020806]/80 backdrop-blur-xl">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="메뉴 열기"
-              className="-ml-2 p-2 text-white/70 hover:text-white transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/wwp-symbol.svg"
-              alt="WWP"
-              width={28}
-              height={28}
-              className="rounded-lg"
-            />
-            <span className="text-sm font-semibold text-white tracking-wide">
-              WWP
-            </span>
-          </div>
-        </header>
 
         {/* Section header */}
         <div className="w-full max-w-5xl mx-auto px-5 md:px-10 pt-8 md:pt-14 pb-6">
