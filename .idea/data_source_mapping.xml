@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/next-app/supabase/assets.sql" value="dc2fea99-f6b2-406c-ac33-9fb657944a06" />
+    <file url="file://$PROJECT_DIR$/next-app/supabase/complexes.sql" value="2bc53fd6-fcbe-4d74-9a46-a110ced90c59" />
     <file url="file://$PROJECT_DIR$/next-app/supabase/events.sql" value="dc2fea99-f6b2-406c-ac33-9fb657944a06" />
   </component>
 </project>

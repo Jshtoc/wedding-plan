@@ -123,32 +123,28 @@ input[type="number"] {
    utility above still works — it's a more specific opt-out. */
 html {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
 }
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 225, 0.25);
-  background-clip: padding-box;
-  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.15);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 body {
-  background: var(--bg);
+  background: #020806;
   font-family: var(--font-pretendard);
   color: var(--ink);
   min-height: 100vh;

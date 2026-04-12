@@ -18,11 +18,16 @@ import {
   VENDOR_CATEGORIES,
   VendorCategory,
 } from "@/data/vendors";
+import { Complex } from "@/data/complexes";
+import { PersonAsset } from "@/data/assets";
 import { supabase } from "@/lib/supabase";
 import HallFormModal from "./HallFormModal";
 import EventFormModal from "./EventFormModal";
 import VendorFormModal from "./VendorFormModal";
+import ComplexFormModal from "./ComplexFormModal";
 import VendorListSection from "./sections/VendorListSection";
+import HousingSection from "./sections/HousingSection";
+import AssetsSection from "./sections/AssetsSection";
 import TwEmoji from "./ui/TwEmoji";
 import OverviewSection from "./sections/OverviewSection";
 import BudgetSection from "./sections/BudgetSection";
@@ -33,6 +38,9 @@ import BudgetSection from "./sections/BudgetSection";
  */
 type FixedSection =
   | "overview"
+  | "assets"
+  | "housing"
+  | "housing-routes"
   | "halls"
   | "studios"
   | "dresses"
@@ -49,14 +57,53 @@ interface SectionDef {
   subtitle: string;
 }
 
-const SECTIONS: SectionDef[] = [
+interface SidebarGroup {
+  label: string;
+  icon: string;
+  items: SectionDef[];
+}
+
+type SidebarEntry =
+  | { kind: "item"; item: SectionDef }
+  | { kind: "group"; group: SidebarGroup };
+
+/** Flat list of all sections — used for activeSection lookup. */
+const ALL_SECTIONS: SectionDef[] = [
   { id: "overview", label: "대시보드", icon: "📊", subtitle: "전체 진행 현황 & 일정" },
+  { id: "assets", label: "자산", icon: "💎", subtitle: "자산 현황 및 자금 계획" },
+  { id: "housing", label: "매물", icon: "🏠", subtitle: "신혼집 매물 비교 및 정리" },
+  { id: "housing-routes", label: "임장 동선", icon: "🚗", subtitle: "매물 방문 동선 계획" },
   { id: "halls", label: "웨딩홀", icon: "💒", subtitle: "예식장 비교 및 견적" },
   { id: "studios", label: "스튜디오", icon: "📸", subtitle: "촬영 스튜디오 리스트" },
-  { id: "dresses", label: "드레스", icon: "👰", subtitle: "신랑 · 신부 의상" },
+  { id: "dresses", label: "드레스 & 예복", icon: "👰", subtitle: "신랑 · 신부 의상" },
   { id: "makeup", label: "메이크업", icon: "💄", subtitle: "메이크업 샵 리스트" },
   { id: "budget", label: "결혼 예산", icon: "💰", subtitle: "항목별 예산 배분 및 관리" },
   { id: "routes", label: "동선", icon: "🗺️", subtitle: "하루 투어 동선 계산" },
+];
+
+/** Sidebar navigation structure with groups. */
+const SIDEBAR_NAV: SidebarEntry[] = [
+  { kind: "item", item: ALL_SECTIONS[0] }, // 대시보드
+  {
+    kind: "group",
+    group: {
+      label: "부동산",
+      icon: "🏠",
+      items: ALL_SECTIONS.filter((s) =>
+        ["assets", "housing", "housing-routes"].includes(s.id)
+      ),
+    },
+  },
+  {
+    kind: "group",
+    group: {
+      label: "예식",
+      icon: "💍",
+      items: ALL_SECTIONS.filter((s) =>
+        ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)
+      ),
+    },
+  },
 ];
 
 export default function WeddingApp() {
@@ -80,6 +127,11 @@ export default function WeddingApp() {
     editing: Vendor | null;
     defaultTarget?: DressTarget;
   } | null>(null);
+  const [complexes, setComplexes] = useState<Complex[]>([]);
+  const [complexesLoading, setComplexesLoading] = useState(true);
+  const [showComplexModal, setShowComplexModal] = useState(false);
+  const [editingComplex, setEditingComplex] = useState<Complex | null>(null);
+  const [assets, setAssets] = useState<PersonAsset[]>([]);
   const [sortType, setSortType] = useState<SortType>("default");
 
   const fetchHalls = useCallback(async () => {
@@ -155,12 +207,35 @@ export default function WeddingApp() {
     setVendorsLoading(false);
   }, []);
 
+  const fetchComplexes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/complexes");
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) setComplexes(data);
+    } catch {
+      // silent
+    }
+    setComplexesLoading(false);
+  }, []);
+
+  const fetchAssets = useCallback(async () => {
+    try {
+      const res = await fetch("/api/assets");
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) setAssets(data);
+    } catch {
+      // silent
+    }
+  }, []);
+
   useEffect(() => {
     fetchHalls();
     fetchBudgets();
     fetchEvents();
     fetchVendors();
-  }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors]);
+    fetchComplexes();
+    fetchAssets();
+  }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors, fetchComplexes, fetchAssets]);
 
   // Custom budget items that should appear as sidebar tabs. Only
   // items with a non-empty label get a tab — empty placeholders (rows
@@ -232,12 +307,26 @@ export default function WeddingApp() {
           fetchVendors();
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "complexes" },
+        () => {
+          fetchComplexes();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "assets" },
+        () => {
+          fetchAssets();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors]);
+  }, [fetchHalls, fetchBudgets, fetchEvents, fetchVendors, fetchComplexes, fetchAssets]);
 
   const sortedHalls = useMemo(() => {
     const sorted = [...halls];
@@ -299,6 +388,16 @@ export default function WeddingApp() {
     setVendorModal({ category, editing: v });
   };
 
+  // Complex (housing) CRUD
+  const handleComplexAdd = () => {
+    setEditingComplex(null);
+    setShowComplexModal(true);
+  };
+  const handleComplexEdit = (c: Complex) => {
+    setEditingComplex(c);
+    setShowComplexModal(true);
+  };
+
   // Map the active sidebar section id to a vendor category (or null
   // when the active section isn't a vendor list).
   const activeVendorCategory: VendorCategory | null =
@@ -319,7 +418,7 @@ export default function WeddingApp() {
   // look it up in SECTIONS; for custom ids we synthesize metadata
   // from the matching budget row.
   const activeSection: SectionDef = useMemo(() => {
-    const fixed = SECTIONS.find((s) => s.id === active);
+    const fixed = ALL_SECTIONS.find((s) => s.id === active);
     if (fixed) return fixed;
     const custom = customSections.find((c) => c.category === active);
     if (custom) {
@@ -330,7 +429,7 @@ export default function WeddingApp() {
         subtitle: "사용자 추가 항목",
       };
     }
-    return SECTIONS[0];
+    return ALL_SECTIONS[0];
   }, [active, customSections]);
 
   return (
@@ -379,35 +478,79 @@ export default function WeddingApp() {
 
         {/* Nav items */}
         <nav className="flex-1 px-3 pb-4 space-y-1 overflow-y-auto">
-          {SECTIONS.map((s) => {
-            const isActive = s.id === active;
+          {SIDEBAR_NAV.map((entry, idx) => {
+            if (entry.kind === "item") {
+              const s = entry.item;
+              const isActive = s.id === active;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleSelectSection(s.id)}
+                  className={
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all " +
+                    (isActive
+                      ? "bg-mint/15 text-mint border border-mint/30 shadow-[0_0_24px_-8px_rgba(0,255,225,0.4)]"
+                      : "text-white/60 hover:text-white hover:bg-white/[0.04] border border-transparent")
+                  }
+                >
+                  <TwEmoji emoji={s.icon} size={18} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium leading-tight">
+                      {s.label}
+                    </div>
+                    <div
+                      className={
+                        "text-[10px] mt-0.5 truncate " +
+                        (isActive ? "text-mint/60" : "text-white/30")
+                      }
+                    >
+                      {s.subtitle}
+                    </div>
+                  </div>
+                </button>
+              );
+            }
+
+            const { group } = entry;
+            const groupActive = group.items.some((s) => s.id === active);
             return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => handleSelectSection(s.id)}
-                className={
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all " +
-                  (isActive
-                    ? "bg-mint/15 text-mint border border-mint/30 shadow-[0_0_24px_-8px_rgba(0,255,225,0.4)]"
-                    : "text-white/60 hover:text-white hover:bg-white/[0.04] border border-transparent")
-                }
-              >
-                <TwEmoji emoji={s.icon} size={18} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium leading-tight">
-                    {s.label}
-                  </div>
-                  <div
-                    className={
-                      "text-[10px] mt-0.5 truncate " +
-                      (isActive ? "text-mint/60" : "text-white/30")
-                    }
-                  >
-                    {s.subtitle}
-                  </div>
+              <div key={group.label} className={idx > 0 ? "pt-3" : ""}>
+                <div
+                  className={
+                    "flex items-center gap-2 px-4 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] " +
+                    (groupActive ? "text-mint/70" : "text-white/30")
+                  }
+                >
+                  <TwEmoji emoji={group.icon} size={12} />
+                  {group.label}
                 </div>
-              </button>
+                <div className="space-y-0.5">
+                  {group.items.map((s) => {
+                    const isActive = s.id === active;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handleSelectSection(s.id)}
+                        className={
+                          "w-full flex items-center gap-3 pl-6 pr-4 py-2.5 rounded-xl text-left transition-all " +
+                          (isActive
+                            ? "bg-mint/15 text-mint border border-mint/30 shadow-[0_0_24px_-8px_rgba(0,255,225,0.4)]"
+                            : "text-white/60 hover:text-white hover:bg-white/[0.04] border border-transparent")
+                        }
+                      >
+                        <TwEmoji emoji={s.icon} size={16} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-medium leading-tight">
+                            {s.label}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
 
@@ -612,6 +755,15 @@ export default function WeddingApp() {
           {active === "budget" && (
             <BudgetSection initial={budgets} onSaved={setBudgets} />
           )}
+          {active === "assets" && <AssetsSection initial={assets} />}
+          {active === "housing" && (
+            <HousingSection
+              complexes={complexes}
+              loading={complexesLoading}
+              onEdit={handleComplexEdit}
+            />
+          )}
+          {active === "housing-routes" && <HousingRoutesStubSection />}
           {active === "routes" && <RoutesStubSection />}
           {isCustomCategory(active) &&
             (() => {
@@ -643,6 +795,16 @@ export default function WeddingApp() {
           +
         </button>
       )}
+      {active === "housing" && (
+        <button
+          type="button"
+          onClick={handleComplexAdd}
+          aria-label="매물 추가"
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
+        >
+          +
+        </button>
+      )}
 
       {/* ── Modals ───────────────────────── */}
       {showModal && (
@@ -667,6 +829,13 @@ export default function WeddingApp() {
           defaultTarget={vendorModal.defaultTarget}
           onClose={() => setVendorModal(null)}
           onSaved={fetchVendors}
+        />
+      )}
+      {showComplexModal && (
+        <ComplexFormModal
+          complex={editingComplex}
+          onClose={() => setShowComplexModal(false)}
+          onSaved={fetchComplexes}
         />
       )}
     </div>
@@ -896,6 +1065,17 @@ function DarkHallCard({
 }
 
 /* ── Stub sections ────────────────────────── */
+
+
+function HousingRoutesStubSection() {
+  return (
+    <EmptyState
+      icon="🚗"
+      title="임장 동선"
+      description="관심 매물들의 방문 동선을 계획하고 하루 임장 일정을 정리할 수 있습니다. 곧 구현 예정."
+    />
+  );
+}
 
 function RoutesStubSection() {
   return (
