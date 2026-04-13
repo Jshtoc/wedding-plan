@@ -89,6 +89,7 @@ export default function ComplexFormModal({
 
   // 가격정보
   const [salePrice, setSalePrice] = useState(0);
+  const [pyeongPrice, setPyeongPrice] = useState(0);
   const [jeonsePrice, setJeonsePrice] = useState(0);
   const [peakPrice, setPeakPrice] = useState(0);
   const [lowPrice, setLowPrice] = useState(0);
@@ -131,6 +132,7 @@ export default function ComplexFormModal({
       setYearUnits(complex.yearUnits);
       setArea(complex.area);
       setSalePrice(complex.salePrice);
+      setPyeongPrice(complex.pyeongPrice);
       setJeonsePrice(complex.jeonsePrice);
       setPeakPrice(complex.peakPrice);
       setLowPrice(complex.lowPrice);
@@ -225,6 +227,7 @@ export default function ComplexFormModal({
       yearUnits: yearUnits.trim(),
       area: area.trim(),
       salePrice: Math.max(0, Math.floor(salePrice) || 0),
+      pyeongPrice: Math.max(0, Math.floor(pyeongPrice) || 0),
       jeonsePrice: Math.max(0, Math.floor(jeonsePrice) || 0),
       peakPrice: Math.max(0, Math.floor(peakPrice) || 0),
       lowPrice: Math.max(0, Math.floor(lowPrice) || 0),
@@ -259,14 +262,8 @@ export default function ComplexFormModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-[#0b0f14] border border-white/10 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.8)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      <div className="w-full max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-[#0b0f14] border border-white/10 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.8)]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-white/10">
           <div>
@@ -419,9 +416,13 @@ export default function ComplexFormModal({
                   <PriceInput value={salePrice} onChange={setSalePrice} />
                 </div>
                 <div>
-                  <label className={label}>전세가</label>
-                  <PriceInput value={jeonsePrice} onChange={setJeonsePrice} />
+                  <label className={label}>평단가</label>
+                  <PriceInput value={pyeongPrice} onChange={setPyeongPrice} />
                 </div>
+              </div>
+              <div>
+                <label className={label}>전세가</label>
+                <PriceInput value={jeonsePrice} onChange={setJeonsePrice} />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>

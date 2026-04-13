@@ -144,6 +144,9 @@ function ComplexCard({ complex, onEdit }: ComplexCardProps) {
 
       {/* Derived stats row */}
       <div className="flex flex-wrap gap-2 mb-3">
+        {c.pyeongPrice > 0 && (
+          <StatBadge label="평단가" value={formatPrice(c.pyeongPrice)} />
+        )}
         {gapValue !== null && (
           <StatBadge label="갭" value={formatPrice(gapValue)} />
         )}
@@ -168,11 +171,30 @@ function ComplexCard({ complex, onEdit }: ComplexCardProps) {
       >
         <div className="overflow-hidden">
           <div className="pt-3 border-t border-white/5 space-y-4">
-            {/* 전저점 */}
-            {c.lowPrice > 0 && (
-              <div className="grid grid-cols-2 gap-x-4">
-                <PriceStat label="전저점" value={c.lowPrice} />
-              </div>
+            {/* 단지정보 */}
+            {(c.city || c.district || c.dong || c.yearUnits || c.area || c.address) && (
+              <DetailSection icon="🏢" title="단지정보">
+                <DetailRow label="시" value={c.city} />
+                <DetailRow label="구" value={c.district} />
+                <DetailRow label="동" value={c.dong} />
+                <DetailRow label="연식 / 세대수" value={c.yearUnits} />
+                <DetailRow label="공급 / 전용면적" value={c.area} />
+                <DetailRow label="도로명주소" value={c.address ?? ""} />
+              </DetailSection>
+            )}
+
+            {/* 가격정보 (전체) */}
+            {(c.salePrice || c.pyeongPrice || c.jeonsePrice || c.peakPrice || c.lowPrice || c.lastTradePrice) > 0 && (
+              <DetailSection icon="💰" title="가격정보">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <PriceStat label="매매가" value={c.salePrice} accent />
+                  <PriceStat label="평단가" value={c.pyeongPrice} />
+                  <PriceStat label="전세가" value={c.jeonsePrice} />
+                  <PriceStat label="직전 실거래" value={c.lastTradePrice} />
+                  <PriceStat label="전고점" value={c.peakPrice} />
+                  <PriceStat label="전저점" value={c.lowPrice} />
+                </div>
+              </DetailSection>
             )}
 
             {/* 교통/직장 */}
@@ -391,6 +413,7 @@ const SAMPLE_COMPLEX: Complex = {
   yearUnits: "2021년 / 1,957세대",
   area: "84㎡",
   salePrice: 29500,
+  pyeongPrice: 8500,
   jeonsePrice: 16000,
   peakPrice: 32000,
   lowPrice: 22000,

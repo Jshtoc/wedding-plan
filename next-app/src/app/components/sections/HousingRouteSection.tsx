@@ -367,119 +367,56 @@ export default function HousingRouteSection({ complexes }: Props) {
           />
         </div>
 
-        {/* Start / End address inputs */}
+        {/* ── 1. 출발지 (0순위) ── */}
         <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
-          <div className="text-[10px] font-semibold text-mint/70 tracking-[0.2em] uppercase mb-3">
-            Start &amp; End
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-[10px] font-bold text-emerald-300">
+              0
+            </span>
+            <div className="text-[10px] font-semibold text-emerald-300/80 tracking-[0.2em] uppercase">
+              출발지
+            </div>
           </div>
-          <div className="space-y-3">
-            {/* 출발지 */}
-            <div className="flex gap-2">
-              <div className="flex-shrink-0 w-9 h-11 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-[10px] font-bold text-emerald-300">
-                출발
-              </div>
-              <input
-                value={startQuery}
-                onChange={(e) => setStartQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSearchStart();
-                  }
-                }}
-                placeholder={startCoord ? startCoord.label : "출발지 주소 입력 (선택)"}
-                className="flex-1 h-11 px-3.5 text-sm bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder:text-white/25 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all"
-                disabled={searchingStart}
-              />
+          <div className="flex gap-2">
+            <input
+              value={startQuery}
+              onChange={(e) => setStartQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSearchStart();
+                }
+              }}
+              placeholder={startCoord ? startCoord.label : "출발지 주소 입력 (선택)"}
+              className="flex-1 h-11 px-3.5 text-sm bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder:text-white/25 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all"
+              disabled={searchingStart}
+            />
+            <button
+              type="button"
+              onClick={handleSearchStart}
+              disabled={searchingStart || !startQuery.trim()}
+              className="h-11 px-4 rounded-lg text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/[0.06] border border-white/10 transition-colors disabled:opacity-40"
+            >
+              {searchingStart ? "..." : "검색"}
+            </button>
+            {startCoord && (
               <button
                 type="button"
-                onClick={handleSearchStart}
-                disabled={searchingStart || !startQuery.trim()}
-                className="h-11 px-4 rounded-lg text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/[0.06] border border-white/10 transition-colors disabled:opacity-40"
+                onClick={() => {
+                  setStartCoord(null);
+                  setStartQuery("");
+                  setRouteResult(null);
+                }}
+                aria-label="출발지 초기화"
+                className="h-11 w-11 flex items-center justify-center rounded-lg text-white/40 hover:text-red-300 hover:bg-red-500/10 border border-white/10 transition-colors"
               >
-                {searchingStart ? "..." : "검색"}
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5"/></svg>
               </button>
-              {startCoord && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStartCoord(null);
-                    setStartQuery("");
-                    setRouteResult(null);
-                  }}
-                  aria-label="출발지 초기화"
-                  className="h-11 w-11 flex items-center justify-center rounded-lg text-white/40 hover:text-red-300 hover:bg-red-500/10 border border-white/10 transition-colors"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5"/></svg>
-                </button>
-              )}
-            </div>
-            {/* 도착지 */}
-            <div>
-              <label className="inline-flex items-center gap-2 mb-2 cursor-pointer select-none text-[11px] text-white/60 hover:text-white/80 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={endSameAsStart}
-                  onChange={toggleEndSameAsStart}
-                  className="sr-only peer"
-                />
-                <span className="relative inline-flex items-center justify-center w-4 h-4 flex-shrink-0">
-                  <span className="absolute inset-0 rounded-[5px] border border-white/25 bg-white/[0.06] peer-checked:bg-mint peer-checked:border-mint transition-colors" />
-                  <svg className="absolute w-3 h-3 text-gray-900 opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5L5 9L9.5 3.5"/></svg>
-                </span>
-                출발지와 동일
-              </label>
-              <div className="flex gap-2">
-                <div className="flex-shrink-0 w-9 h-11 rounded-lg bg-red-500/15 border border-red-400/30 flex items-center justify-center text-[10px] font-bold text-red-300">
-                  도착
-                </div>
-                <input
-                  value={endSameAsStart ? (startCoord?.label || "") : endQuery}
-                  onChange={(e) => {
-                    if (!endSameAsStart) setEndQuery(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !endSameAsStart) {
-                      e.preventDefault();
-                      handleSearchEnd();
-                    }
-                  }}
-                  placeholder={endCoord ? endCoord.label : "도착지 주소 입력 (선택)"}
-                  className="flex-1 h-11 px-3.5 text-sm bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder:text-white/25 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all disabled:opacity-50"
-                  disabled={searchingEnd || endSameAsStart}
-                />
-                {!endSameAsStart && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleSearchEnd}
-                      disabled={searchingEnd || !endQuery.trim()}
-                      className="h-11 px-4 rounded-lg text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/[0.06] border border-white/10 transition-colors disabled:opacity-40"
-                    >
-                      {searchingEnd ? "..." : "검색"}
-                    </button>
-                    {endCoord && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEndCoord(null);
-                          setEndQuery("");
-                          setRouteResult(null);
-                        }}
-                        aria-label="도착지 초기화"
-                        className="h-11 w-11 flex items-center justify-center rounded-lg text-white/40 hover:text-red-300 hover:bg-red-500/10 border border-white/10 transition-colors"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5"/></svg>
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Selection + compute */}
+        {/* ── 2. 방문 매물 선택 (중간) ── */}
         <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -562,6 +499,76 @@ export default function HousingRouteSection({ complexes }: Props) {
                 </label>
               );
             })}
+          </div>
+        </div>
+
+        {/* ── 3. 도착지 (마지막 순위) ── */}
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-red-500/20 border border-red-400/40 flex items-center justify-center text-[10px] font-bold text-red-300">
+                ∞
+              </span>
+              <div className="text-[10px] font-semibold text-red-300/80 tracking-[0.2em] uppercase">
+                도착지
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 cursor-pointer select-none text-[11px] text-white/60 hover:text-white/80 transition-colors">
+              <input
+                type="checkbox"
+                checked={endSameAsStart}
+                onChange={toggleEndSameAsStart}
+                className="sr-only peer"
+              />
+              <span className="relative inline-flex items-center justify-center w-4 h-4 flex-shrink-0">
+                <span className="absolute inset-0 rounded-[5px] border border-white/25 bg-white/[0.06] peer-checked:bg-mint peer-checked:border-mint transition-colors" />
+                <svg className="absolute w-3 h-3 text-gray-900 opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5L5 9L9.5 3.5"/></svg>
+              </span>
+              출발지와 동일
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={endSameAsStart ? (startCoord?.label || "") : endQuery}
+              onChange={(e) => {
+                if (!endSameAsStart) setEndQuery(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !endSameAsStart) {
+                  e.preventDefault();
+                  handleSearchEnd();
+                }
+              }}
+              placeholder={endCoord ? endCoord.label : "도착지 주소 입력 (선택)"}
+              className="flex-1 h-11 px-3.5 text-sm bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder:text-white/25 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all disabled:opacity-50"
+              disabled={searchingEnd || endSameAsStart}
+            />
+            {!endSameAsStart && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSearchEnd}
+                  disabled={searchingEnd || !endQuery.trim()}
+                  className="h-11 px-4 rounded-lg text-[11px] font-medium text-white/60 hover:text-white hover:bg-white/[0.06] border border-white/10 transition-colors disabled:opacity-40"
+                >
+                  {searchingEnd ? "..." : "검색"}
+                </button>
+                {endCoord && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEndCoord(null);
+                      setEndQuery("");
+                      setRouteResult(null);
+                    }}
+                    aria-label="도착지 초기화"
+                    className="h-11 w-11 flex items-center justify-center rounded-lg text-white/40 hover:text-red-300 hover:bg-red-500/10 border border-white/10 transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5"/></svg>
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 

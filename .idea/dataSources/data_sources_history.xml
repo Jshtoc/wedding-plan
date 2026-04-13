@@ -11,14 +11,21 @@
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require</jdbc-url>
       <jdbc-additional-properties>
+        <property name="com.intellij.clouds.kubernetes.db.host.port" />
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+        <property name="com.intellij.clouds.kubernetes.db.container.port" />
       </jdbc-additional-properties>
       <secret-storage>master_key</secret-storage>
       <user-name>postgres.veaktwkvuuuhmcxgvdeh</user-name>
       <schema-mapping>
         <introspection-scope>
-          <node kind="database" qname="@">
-            <node kind="schema" qname="@" />
+          <node negative="1">
+            <node kind="database" qname="@">
+              <node kind="schema" qname="@" />
+            </node>
+            <node kind="database" qname="postgres">
+              <node kind="schema" qname="public" />
+            </node>
           </node>
         </introspection-scope>
       </schema-mapping>
@@ -46,6 +53,7 @@
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://localhost:5432/postgres</jdbc-url>
       <secret-storage>master_key</secret-storage>
+      <user-name>postgres.veaktwkvuuuhmcxgvdeh</user-name>
       <schema-mapping />
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>

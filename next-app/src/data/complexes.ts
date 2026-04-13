@@ -15,6 +15,7 @@ export interface Complex {
   yearUnits: string;      // 연식 / 세대수
   area: string;           // 공급/전용면적
   salePrice: number;      // 매매가 (호가), 만원
+  pyeongPrice: number;    // 평단가, 만원
   jeonsePrice: number;    // 전세가, 만원
   peakPrice: number;      // 전고점, 만원
   lowPrice: number;       // 전저점, 만원

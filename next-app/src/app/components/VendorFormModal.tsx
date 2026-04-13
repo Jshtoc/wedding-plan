@@ -158,14 +158,8 @@ export default function VendorFormModal({
         : "청담 메이크업";
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-[#0b0f14] border border-white/10 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.8)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      <div className="w-full max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-[#0b0f14] border border-white/10 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.8)]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-white/10">
           <div>
