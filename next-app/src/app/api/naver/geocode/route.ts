@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID!;
 const CLIENT_SECRET = process.env.NAVER_MAP_CLIENT_SECRET!;
 const GEOCODE_URL =
-  "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode";
+  "https://maps.apigw.ntruss.com/map-geocode/v2/geocode";
 
 /**
  * POST /api/naver/geocode
@@ -37,8 +37,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    interface AddressElement {
+      types: string[];
+      longName: string;
+      shortName: string;
+    }
     const data = (await res.json()) as {
-      addresses?: { x: string; y: string; roadAddress: string }[];
+      addresses?: {
+        x: string;
+        y: string;
+        roadAddress: string;
+        jibunAddress: string;
+        addressElements?: AddressElement[];
+      }[];
     };
 
     if (!data.addresses || data.addresses.length === 0) {
@@ -49,10 +60,19 @@ export async function POST(req: NextRequest) {
     }
 
     const first = data.addresses[0];
+    const els = first.addressElements || [];
+    const find = (type: string) =>
+      els.find((e) => e.types.includes(type))?.shortName || "";
+
     return NextResponse.json({
       lat: parseFloat(first.y),
       lng: parseFloat(first.x),
       roadAddress: first.roadAddress || query,
+      jibunAddress: first.jibunAddress || "",
+      // Structured address components for auto-fill
+      city: find("SIDO"),
+      district: find("SIGUGUN"),
+      dong: find("DONGMYUN") || find("RI"),
     });
   } catch (e: unknown) {
     console.error("POST /api/naver/geocode error:", e);

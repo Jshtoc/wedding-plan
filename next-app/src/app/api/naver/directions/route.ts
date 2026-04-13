@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID!;
 const CLIENT_SECRET = process.env.NAVER_MAP_CLIENT_SECRET!;
 const DIRECTIONS_URL =
-  "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving";
+  "https://maps.apigw.ntruss.com/map-direction/v1/driving";
 
 interface Waypoint {
   lat: number;

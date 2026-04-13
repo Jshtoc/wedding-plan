@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Complex } from "@/data/complexes";
 import TwEmoji from "./ui/TwEmoji";
+import { useAlert, useConfirm } from "./ui/ConfirmModal";
+import { useLoading } from "./ui/LoadingOverlay";
 
 interface Props {
   complex?: Complex | null;
@@ -104,6 +106,20 @@ export default function ComplexFormModal({
   const [isCandidate, setIsCandidate] = useState(false);
   const [note, setNote] = useState("");
 
+  // 좌표 (주소 검색 결과)
+  const [lat, setLat] = useState<number | undefined>(undefined);
+  const [lng, setLng] = useState<number | undefined>(undefined);
+  const [fullAddress, setFullAddress] = useState("");
+
+  // 주소 검색
+  const [addrQuery, setAddrQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const showAlert = useAlert();
+  const showConfirm = useConfirm();
+  const loadingCtx = useLoading();
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -129,12 +145,74 @@ export default function ComplexFormModal({
       setIsNewBuild(complex.isNewBuild);
       setIsCandidate(complex.isCandidate);
       setNote(complex.note);
+      if (complex.lat) setLat(complex.lat);
+      if (complex.lng) setLng(complex.lng);
+      if (complex.address) setFullAddress(complex.address);
     }
   }, [complex]);
 
+  const handleDelete = async () => {
+    if (!complex) return;
+    const ok = await showConfirm(`"${complex.name}" 매물을 삭제하시겠습니까?`, { variant: "danger" });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/complexes/${complex.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        await showAlert(data.error || "삭제에 실패했습니다.");
+        return;
+      }
+      onSaved();
+      onClose();
+    } catch {
+      await showAlert("네트워크 오류");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    const q = addrQuery.trim();
+    if (!q) {
+      setSearchError("주소를 입력해주세요.");
+      return;
+    }
+    setSearching(true);
+    loadingCtx.show();
+    setSearchError(null);
+    try {
+      const res = await fetch("/api/naver/geocode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSearchError(data.error || "주소 검색 실패");
+        return;
+      }
+      // 좌표 + 주소 저장
+      setLat(data.lat);
+      setLng(data.lng);
+      setFullAddress(data.roadAddress || q);
+      // 시/구/동 자동 채움 (비어있을 때만)
+      if (data.city && !city) setCity(data.city);
+      if (data.district && !district) setDistrict(data.district);
+      if (data.dong && !dong) setDong(data.dong);
+      // 단지명도 비어있으면 검색어로 채움
+      if (!name && q) setName(q);
+    } catch (e: unknown) {
+      setSearchError(e instanceof Error ? e.message : "네트워크 오류");
+    } finally {
+      setSearching(false);
+      loadingCtx.hide();
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
-      alert("단지명을 입력하세요.");
+      await showAlert("단지명을 입력하세요.");
       return;
     }
     setSaving(true);
@@ -161,6 +239,9 @@ export default function ComplexFormModal({
       isNewBuild: isNewBuild.trim(),
       isCandidate,
       note: note.trim(),
+      lat,
+      lng,
+      address: fullAddress || undefined,
     };
 
     const url = isEdit ? `/api/complexes/${complex!.id}` : "/api/complexes";
@@ -224,6 +305,55 @@ export default function ComplexFormModal({
                   className={input}
                 />
               </div>
+              {/* 주소 검색 */}
+              <div>
+                <label className={label}>주소 검색</label>
+                <div className="flex gap-2">
+                  <input
+                    value={addrQuery}
+                    onChange={(e) => {
+                      setAddrQuery(e.target.value);
+                      setSearchError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSearch();
+                      }
+                    }}
+                    placeholder="단지명 또는 도로명주소 입력"
+                    className={input + " flex-1"}
+                    disabled={searching}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSearch}
+                    disabled={searching}
+                    className={ghostBtn + " whitespace-nowrap"}
+                  >
+                    {searching ? "검색중..." : "검색"}
+                  </button>
+                </div>
+                {searchError && (
+                  <div className="mt-2 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/10 border border-red-400/20 px-3 py-2 rounded-lg">
+                    <TwEmoji emoji="⚠️" size={13} className="flex-shrink-0 mt-0.5" />
+                    <span>{searchError}</span>
+                  </div>
+                )}
+                {fullAddress && (
+                  <div className="mt-2 flex items-center gap-2 text-[12px] text-mint bg-mint/[0.06] border border-mint/20 px-3 py-2 rounded-lg">
+                    <TwEmoji emoji="📍" size={13} className="flex-shrink-0" />
+                    <span className="flex-1">{fullAddress}</span>
+                    {lat && lng && (
+                      <span className="text-[10px] text-white/30 tabular-nums flex-shrink-0">
+                        {lat.toFixed(4)}, {lng.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 시 / 구 / 동 */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className={label}>시</label>
@@ -452,18 +582,32 @@ export default function ComplexFormModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 sm:px-8 py-4 border-t border-white/10 bg-white/[0.02]">
-          <button type="button" onClick={onClose} className={ghostBtn}>
-            취소
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className={primaryBtn}
-          >
-            {saving ? "저장 중..." : isEdit ? "수정 완료" : "등록하기"}
-          </button>
+        <div className="flex items-center justify-between gap-2 px-6 sm:px-8 py-4 border-t border-white/10 bg-white/[0.02]">
+          <div>
+            {isEdit && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting || saving}
+                className="h-11 px-5 rounded-lg text-xs font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/20 border border-red-400/30 hover:border-red-400/50 transition-colors"
+              >
+                {deleting ? "삭제 중..." : "삭제"}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} disabled={saving || deleting} className={ghostBtn}>
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || deleting}
+              className={primaryBtn}
+            >
+              {saving ? "저장 중..." : isEdit ? "수정 완료" : "등록하기"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

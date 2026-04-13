@@ -349,6 +349,9 @@ function rowToComplex(row: Record<string, unknown>): Complex {
     isNewBuild: (row.is_new_build as string) || "",
     isCandidate: (row.is_candidate as boolean) || false,
     note: (row.note as string) || "",
+    lat: (row.lat as number | null) ?? undefined,
+    lng: (row.lng as number | null) ?? undefined,
+    address: (row.address as string | null) ?? undefined,
   };
 }
 
@@ -375,6 +378,9 @@ function complexToRow(c: Omit<Complex, "id">) {
     is_new_build: c.isNewBuild,
     is_candidate: c.isCandidate,
     note: c.note,
+    lat: c.lat ?? null,
+    lng: c.lng ?? null,
+    address: c.address ?? null,
   };
 }
 

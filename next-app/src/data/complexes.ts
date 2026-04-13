@@ -31,6 +31,11 @@ export interface Complex {
   isNewBuild: string;     // 5년 이내 신축 여부
   isCandidate: boolean;   // 임장 후보
   note: string;           // 메모
+
+  // 주소 검색으로 채워지는 좌표 + 도로명주소
+  lat?: number;
+  lng?: number;
+  address?: string;       // 도로명주소 (검색 결과)
 }
 
 /** 전세가율 (%) — 전세가/매매가 × 100 */

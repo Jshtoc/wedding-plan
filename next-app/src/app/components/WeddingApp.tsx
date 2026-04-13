@@ -30,6 +30,7 @@ import HousingSection from "./sections/HousingSection";
 import HousingRouteSection from "./sections/HousingRouteSection";
 import AssetsSection from "./sections/AssetsSection";
 import TwEmoji from "./ui/TwEmoji";
+import { useConfirm } from "./ui/ConfirmModal";
 import OverviewSection from "./sections/OverviewSection";
 import BudgetSection from "./sections/BudgetSection";
 
@@ -135,6 +136,7 @@ export default function WeddingApp() {
   const [assets, setAssets] = useState<PersonAsset[]>([]);
   const [sortType, setSortType] = useState<SortType>("default");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const showConfirm = useConfirm();
 
   const fetchHalls = useCallback(async () => {
     try {
@@ -388,7 +390,8 @@ export default function WeddingApp() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
+    const ok = await showConfirm("정말 삭제하시겠습니까?", { variant: "danger" });
+    if (!ok) return;
     await fetch(`/api/halls/${id}`, { method: "DELETE" });
     fetchHalls();
   };

@@ -9,6 +9,7 @@ import {
   VendorCategory,
 } from "@/data/vendors";
 import TwEmoji from "./ui/TwEmoji";
+import { useConfirm } from "./ui/ConfirmModal";
 
 interface Props {
   category: VendorCategory;
@@ -70,6 +71,7 @@ export default function VendorFormModal({
   const [target, setTarget] = useState<DressTarget>(defaultTarget ?? "bride");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const showConfirm = useConfirm();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -126,7 +128,8 @@ export default function VendorFormModal({
 
   const handleDelete = async () => {
     if (!vendor) return;
-    if (!confirm(`"${vendor.name}" 항목을 삭제하시겠습니까?`)) return;
+    const ok = await showConfirm(`"${vendor.name}" 항목을 삭제하시겠습니까?`, { variant: "danger" });
+    if (!ok) return;
     setDeleting(true);
     setError(null);
     try {

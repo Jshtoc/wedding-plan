@@ -9,6 +9,7 @@ import {
 } from "@/data/halls";
 import { BudgetItem } from "@/data/budgets";
 import TwEmoji from "./ui/TwEmoji";
+import { useAlert } from "./ui/ConfirmModal";
 
 interface Props {
   hall?: WeddingHall | null;
@@ -70,6 +71,8 @@ export default function HallFormModal({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showGradeGuide, setShowGradeGuide] = useState(false);
+
+  const showAlert = useAlert();
 
   // Look up the hall-category budget once per render. This drives the
   // traffic-light dot next to the price input.
@@ -134,7 +137,7 @@ export default function HallFormModal({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert("웨딩홀 이름을 입력하세요.");
+      await showAlert("웨딩홀 이름을 입력하세요.");
       return;
     }
     setSaving(true);

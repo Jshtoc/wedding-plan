@@ -8,6 +8,7 @@ import {
   WeddingEvent,
 } from "@/data/events";
 import TwEmoji from "./ui/TwEmoji";
+import { useConfirm } from "./ui/ConfirmModal";
 
 interface Props {
   event?: WeddingEvent | null;
@@ -69,6 +70,7 @@ export default function EventFormModal({ event, onClose, onSaved }: Props) {
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const showConfirm = useConfirm();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,7 +129,8 @@ export default function EventFormModal({ event, onClose, onSaved }: Props) {
 
   const handleDelete = async () => {
     if (!event) return;
-    if (!confirm(`"${event.title}" 일정을 삭제하시겠습니까?`)) return;
+    const ok = await showConfirm(`"${event.title}" 일정을 삭제하시겠습니까?`, { variant: "danger" });
+    if (!ok) return;
     setDeleting(true);
     setError(null);
     try {
