@@ -125,18 +125,23 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 
 ---
 
-## 현재 구현 상태 (2026-04-10 기준)
+## 현재 구현 상태 (2026-04-13 기준)
 
 ### 인증 & 기반
 - **인증**: 2인 고정 계정 (`wed1`/`wed2`), bcrypt 해시, HMAC 쿠키 세션, Edge proxy 전역 보호
 - **로그인 페이지**: Aceternity 스타일 오로라 배경 + 투명 글라스 카드 (민트/그린 팔레트)
 - **WWP 브랜드 자산**: favicon, apple-icon, 로고 SVG, OpenGraph/Twitter 카드
 - **Pretendard 폰트** (React 19 link hoisting)
+- **에러 바운더리**: `app/error.tsx` — 런타임 에러 시 다크 테마 에러 화면 + "다시 시도" 버튼
 - **`.env.local`의 `$` escape 규칙** (backend skill convention에 문서화)
 
 ### 대시보드 Shell
-- 좌측 사이드바 (데스크톱) / 햄버거 드로어 (모바일), 7개 고정 섹션 + custom 예산 항목 동적 탭
-- 상단 Section header, 메인 영역 max-w-5xl
+- 좌측 사이드바 (데스크톱) / 햄버거 드로어 (모바일)
+- 예식 그룹: 웨딩홀 / 스튜디오 / 드레스 / 메이크업
+- 부동산 그룹: 자산 / 매물 / 임장 동선
+- 결혼 예산 + custom 예산 항목 동적 탭 (My Items)
+- **body scroll lock** (모바일 드로어 열림 시)
+- **ESC 키로 드로어 닫기**
 
 ### Overview 섹션
 - **StatusCards**: 웨딩홀/스튜디오/드레스/메이크업/예정 일정 실 카운트 + accent 표시
@@ -146,48 +151,64 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 
 ### 웨딩홀
 - **CRUD**: Supabase `halls` 테이블 (8필드: name/sub/price/guests/parking/transport/note + id), 다크 카드 그리드, 정렬(가격/보증인원/주차), FAB 추가
-- **URL 자동 채움**: `/api/fetch-preview` — OG/Twitter meta 파싱으로 이름/위치/메모 자동 입력
-- **동적 priceLevel dot**: 결혼 예산의 웨딩홀 카테고리 대비 `computePriceLevel()` 로 🟢🟡🔴 표시
-- **HallFormModal**: 다크 글라스 테마, 교통편 칩(지하철/버스/기차), 가격 등급 안내 popover
+- **URL 자동 채움**: `/api/fetch-preview` — OG/Twitter meta 파싱
+- **동적 priceLevel dot**: 예산 대비 `computePriceLevel()` 로 🟢🟡🔴 표시
+- **HallFormModal**: 다크 글라스 테마, 교통편 칩, 가격 등급 popover
+
+### 스튜디오 · 드레스 · 메이크업 (vendors)
+- **3개 테이블 공통 스키마**: `studios`/`dresses`/`makeups`, 드레스만 `target` (groom/bride)
+- **Generic 컴포넌트**: `VendorFormModal` + `VendorListSection` 하나로 3섹션 커버
+- **단일 동적 API**: `/api/vendors/[category]/...` (GET/POST/PUT/DELETE)
+- **드레스 sub-tab**: 신부/신랑 필터 + 각 카운트, FAB로 추가
 
 ### 결혼 예산
-- **Supabase `budgets` 테이블**: 4개 고정 카테고리(hall/studio/dress/makeup) + `total` pseudo-row + `custom:*` 임의 항목
-- **총 예산 목표** 입력 + 배분 합계와의 차액 표시(여유/초과 색상 구분)
-- **Custom 항목**: 이름/아이콘/금액 자유롭게 추가, `BUDGET_ICONS` 24개 팔레트에서 아이콘 피커
-- **편집 모드**: 체크박스 기반 선택 삭제, 전체 선택, 정보 있는 항목 삭제 시 확인 다이얼로그
-- **사이드바 동적 탭**: custom 항목이 저장되면 "My Items" 섹션 하위에 탭으로 자동 추가 (삭제하면 사라짐)
-- **다크 커스텀 체크박스**: `peer` 패턴 기반, mint glow 강조
+- **Supabase `budgets` 테이블**: 4개 고정 카테고리 + `total` + `custom:*` 항목
+- **총 예산 목표** + 배분 차액 (여유/초과 색상)
+- **Custom 항목**: 이름/아이콘/금액, `BUDGET_ICONS` 24개 팔레트 아이콘 피커
+- **편집 모드**: 체크박스 선택 삭제, 전체 선택, 확인 다이얼로그
+- **사이드바 동적 탭**: custom 항목 → "My Items" 하위 탭
+- **다크 커스텀 체크박스**: `peer` 패턴 기반, mint glow
 
 ### 캘린더 (events)
 - **Supabase `events` 테이블**: date/title/type/time/location/memo
-- **EventFormModal**: 다크 테마, 타입 칩(웨딩홀/스튜디오/드레스/메이크업/기타), 삭제 버튼 포함
-- **CRUD 진입점**: 다가오는 일정 리스트의 "+ 일정 추가" 버튼 + 일정 카드 클릭 + 캘린더 날짜 클릭
+- **EventFormModal**: 타입 칩, 삭제 버튼
+- **CRUD 진입점**: "+ 일정 추가" 버튼 + 카드/캘린더 날짜 클릭
 
-### 스튜디오 · 드레스 · 메이크업 (vendors)
-- **3개 테이블 공통 스키마**: `studios`/`dresses`/`makeups` (name/sub/price/note), 드레스만 `target` (groom/bride) 추가
-- **Generic 컴포넌트**: `VendorFormModal` + `VendorListSection` 하나로 3섹션 모두 커버
-- **단일 동적 API 라우트**: `/api/vendors/[category]/...` (GET/POST/PUT/DELETE)
-- **드레스 sub-tab**: 신부/신랑 필터, 각 카운트 표시
-- **카드 클릭으로 편집**, FAB로 추가
+### 신혼집 / 매물 (complexes) — 2026-04-12 추가
+- **Supabase `complexes` 테이블**: 단지정보 (name/city/district/dong/yearUnits/area) + 가격정보 (salePrice/jeonsePrice/peakPrice/lowPrice/lastTradePrice) + 입지분석 (commuteTime/subwayLine/workplace1/2/schoolScore/hazard/amenities/isNewBuild/isCandidate) + note
+- **ComplexFormModal**: 단지정보/가격정보/입지분석 섹션 분리, 후보 체크박스
+- **HousingSection**: 카드 그리드, 정렬 (매매가/갭/이름), 전세비율/갭/고점 대비 하락 표시
+- **유틸리티 함수**: `jeonseRatio()`, `gap()`, `dropFromPeak()`
+
+### 자산 (assets) — 2026-04-12 추가
+- **Supabase `assets` 테이블**: role (groom/bride UNIQUE) + 자산 (cash/stocks/savings/otherAssets) + 소득 (monthlyIncome/annualIncome) + 대출 심사 (age/isHomeless/homelessYears/isFirstHome/existingLoans/creditScore/netAssets) + note
+- **AssetsSection**: 신랑/신부 자산 카드 병렬 배치, 요약 카드 (총 자산/연소득/부부합산)
+- **upsert 패턴**: role 기반 2행 고정, `POST /api/assets`로 upsert
+- **formatWon()**: 한국식 금액 포맷 (예: "5억 9,500만", "3,800만")
 
 ### 실시간 동기화
-- **Supabase Realtime 단일 채널** (`wwp-shared`): 6개 테이블 모두 리스너 — halls / budgets / events / studios / dresses / makeups
-- **편집 중 충돌 머지**: BudgetSection은 category-keyed baseline 기반 merge로 로컬 편집 보존
+- **Supabase Realtime 단일 채널** (`wwp-shared`): 8개 테이블 리스너 — halls / budgets / events / studios / dresses / makeups / complexes / assets
+- **BudgetSection 충돌 머지**: category-keyed baseline merge
 
 ### 공통 디자인
 - 전역 다크 글라스 테마 (`bg-[#020806]`, white overlay)
-- 커스텀 스크롤바 (얇은 흰색 오버레이, hover 시 민트 glow)
-- `<input type="number">` 스피너 버튼 전역 숨김
-- 모든 인풋/버튼이 브랜드 민트(#00FFE1) 강조
+- 커스텀 스크롤바 (6px 얇은 흰색, hover 시 밝아짐)
+- `<input type="number">` 스피너 전역 숨김
+- 브랜드 민트(#00FFE1) 일관 강조
+- **Legacy warm 테마 CSS 전량 삭제** (2026-04-13): `globals.css` 700줄+ 제거 — `.modal-*`, `.form-*`, `.btn-*`, `.card-*`, `.tl-*`, `.copy-btn`, `.route-*`, `.filter-*`, `.badge`, `.info-*`, `.fab`, `:root` warm vars 등
 
-### 진행 중 / Stub 상태
-- **동선 계산** — EmptyState placeholder, 기존 `RouteTab`은 legacy (미사용)
+### 임장 동선 (housing-routes) — 2026-04-13 구현
+- **네이버 지도 API**: Geocoding (주소→좌표) + Directions 5 (경로 계산) — `/api/naver/geocode`, `/api/naver/directions` 서버 프록시
+- **네이버 지도 SDK (v3)**: 클라이언트 `<Script>` 동적 로드, 지도 위 경로 폴리라인 + 번호 마커
+- **HousingRouteSection**: 매물 체크박스 선택 → "경로 계산" → 지도 시각화 + 구간별 거리/시간 타임라인
+- **API Keys**: `.env.local` — `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` + `NAVER_MAP_CLIENT_SECRET`
+- **타입 선언**: `src/types/navermaps.d.ts` (naver.maps SDK 최소 타입)
 
-### Legacy / 삭제 후보
-- `src/app/components/RouteTab.tsx` — warm 테마 기존 투어 동선, 미사용
-- `src/app/components/CopyButton.tsx` — RouteTab 전용, 미사용
-- `globals.css`의 warm 테마 전용 클래스 (`.modal-*`, `.form-*`, `.btn-*`, `.tl-*`, `.copy-btn` 등) — 실 사용처 없음
-- 삭제 전에 `grep -r` 로 사용처 재확인
+### Legacy — 전부 정리 완료 (2026-04-13)
+- `HallCard.tsx` — 삭제됨 (2026-04-10)
+- `RouteTab.tsx` + `CopyButton.tsx` — 삭제됨 (2026-04-13)
+- `halls.ts`의 `routeItems` / `RouteStop` / `RouteDrive` legacy export — 삭제됨 (2026-04-13)
+- `globals.css` warm 테마 클래스 (~700줄) + `:root` warm vars + `@theme` warm palette — 삭제됨 (2026-04-13)
 
 ---
 
@@ -197,9 +218,9 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **Project ref**: `veaktwkvuuuhmcxgvdeh`
 - **Region**: `ap-northeast-1` (도쿄 — Supabase에 서울 리전 없음)
 - **URL**: `https://veaktwkvuuuhmcxgvdeh.supabase.co`
-- **테이블 (총 6개)**: `halls`, `budgets`, `events`, `studios`, `dresses`, `makeups`
+- **테이블 (총 8개)**: `halls`, `budgets`, `events`, `studios`, `dresses`, `makeups`, `complexes`, `assets`
 - **RLS**: 전부 disabled — 액세스는 Next.js proxy에서 쿠키 세션 기반으로 차단
-- **Realtime publication (`supabase_realtime`)**: 위 6개 테이블 전부 포함
+- **Realtime publication (`supabase_realtime`)**: 위 8개 테이블 전부 포함
 
 ### DB 마이그레이션 워크플로 (WebStorm)
 
@@ -233,6 +254,8 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 | 7 | `supabase/budgets_icon.sql` | `icon` 컬럼 추가 + 구 `etc` 행 삭제 |
 | 8 | `supabase/events.sql` | `events` 테이블 + realtime publication 등록 |
 | 9 | `supabase/vendors.sql` | `studios`/`dresses`/`makeups` 3개 테이블 + realtime publication 등록 |
+| 10 | `supabase/complexes.sql` | `complexes` 테이블 (신혼집 매물 비교) |
+| 11 | `supabase/assets.sql` | `assets` 테이블 (신랑/신부 자산, role UNIQUE + 초기 2행 seed) |
 
 새 마이그레이션 추가 시 번호순으로 계속 이어가고, 파일 상단 주석에 dependency를 명시할 것.
 
@@ -242,28 +265,7 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 
 이 목록은 다음 세션에서 이어서 할 수 있는 작업을 우선순위 순으로 정리한 것입니다. 각 항목은 독립적이라 원하는 것부터 골라 진행할 수 있습니다.
 
-### 1. 동선 계산 실 구현
-- 이유: 선택된 웨딩홀/스튜디오/드레스/메이크업을 기반으로 하루 투어 경로 제안
-- 작업 규모: 크게 (API 선택에 따라 변동)
-- 옵션:
-  - **Kakao Map REST API** — 한국에 특화, 무료 티어 있음, 경로/거리/시간 제공
-  - **Google Maps Directions API** — 더 정확하지만 결제 카드 필요
-  - **간단 구현**: 하드코딩된 위도/경도 + Haversine 거리 공식, 시간 없이 거리만
-- 필요 작업:
-  - 주소 → 좌표 변환 (geocoding) 또는 수동 입력
-  - 경로 최적화 알고리즘 (5~7 포인트 TSP, 브루트포스로 충분)
-  - 타임라인 UI (다크 테마)
-  - 각 정거장 간 이동 시간/거리 표시
-
-### 2. Legacy 파일 삭제
-- `RouteTab.tsx`, `CopyButton.tsx` 제거 (`HallCard.tsx`는 이미 삭제됨)
-- 삭제 전 `grep -r` 로 사용처 재확인 (이미 미사용이지만 안전)
-- `globals.css`의 warm-theme 전용 클래스들 (`.tl-*`, `.copy-btn` 등)도 같이 정리 가능
-
-### 3. 기타 소규모 개선
-- **body scroll lock**: 모바일 사이드바 드로어 열려있을 때 배경 스크롤 방지
-- **ESC 키로 드로어 닫기**: 키보드 접근성
+### 1. 기타 소규모 개선
 - **Supabase Presence API**: 상대방이 온라인인지 표시 ("wed2가 보고 있음")
 - **예산 spent 필드**: 예산 대비 실제 지출 트래킹
 - **로그인 세션 만료 시 자동 로그아웃 UI**: 현재는 새 요청 시 401 → 수동 재로그인
-- **에러 바운더리**: `app/error.tsx` 추가해서 런타임 에러 핸들링

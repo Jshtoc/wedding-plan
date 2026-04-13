@@ -27,6 +27,7 @@ import VendorFormModal from "./VendorFormModal";
 import ComplexFormModal from "./ComplexFormModal";
 import VendorListSection from "./sections/VendorListSection";
 import HousingSection from "./sections/HousingSection";
+import HousingRouteSection from "./sections/HousingRouteSection";
 import AssetsSection from "./sections/AssetsSection";
 import TwEmoji from "./ui/TwEmoji";
 import OverviewSection from "./sections/OverviewSection";
@@ -247,6 +248,17 @@ export default function WeddingApp() {
     return () => {
       document.body.style.overflow = "";
     };
+  }, [sidebarOpen]);
+
+  // Close sidebar on ESC key (mobile accessibility)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [sidebarOpen]);
 
   // Custom budget items that should appear as sidebar tabs. Only
@@ -763,7 +775,9 @@ export default function WeddingApp() {
               onEdit={handleComplexEdit}
             />
           )}
-          {active === "housing-routes" && <HousingRoutesStubSection />}
+          {active === "housing-routes" && (
+            <HousingRouteSection complexes={complexes} />
+          )}
           {active === "routes" && <RoutesStubSection />}
           {isCustomCategory(active) &&
             (() => {
@@ -1066,16 +1080,6 @@ function DarkHallCard({
 
 /* ── Stub sections ────────────────────────── */
 
-
-function HousingRoutesStubSection() {
-  return (
-    <EmptyState
-      icon="🚗"
-      title="임장 동선"
-      description="관심 매물들의 방문 동선을 계획하고 하루 임장 일정을 정리할 수 있습니다. 곧 구현 예정."
-    />
-  );
-}
 
 function RoutesStubSection() {
   return (
