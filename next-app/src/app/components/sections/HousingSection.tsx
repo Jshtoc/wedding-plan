@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Complex, jeonseRatio, gap, dropFromPeak } from "@/data/complexes";
 import TwEmoji from "../ui/TwEmoji";
+import HousingGuide from "./HousingGuide";
 
 interface Props {
   complexes: Complex[];
@@ -51,6 +52,9 @@ export default function HousingSection({
 
   return (
     <div>
+      {/* Guide */}
+      <HousingGuide />
+
       {/* Sort bar */}
       <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none">
         {sortOptions.map((opt) => (
@@ -378,16 +382,45 @@ function SkeletonGrid() {
   );
 }
 
+const SAMPLE_COMPLEX: Complex = {
+  id: -1,
+  name: "래미안 퍼스티지",
+  city: "서울",
+  district: "강남구",
+  dong: "개포동",
+  yearUnits: "2021년 / 1,957세대",
+  area: "84㎡",
+  salePrice: 29500,
+  jeonsePrice: 16000,
+  peakPrice: 32000,
+  lowPrice: 22000,
+  lastTradePrice: 28800,
+  commuteTime: "15분",
+  subwayLine: "3호선 대치역",
+  workplace1: "",
+  workplace2: "",
+  schoolScore: "A",
+  hazard: "없음",
+  amenities: "대형마트, 공원",
+  isNewBuild: "O",
+  isCandidate: true,
+  note: "역세권 + 학군 우수. 갭 1.35억.",
+};
+
 function EmptyState() {
   return (
-    <div className="bg-white/[0.03] border border-white/10 border-dashed rounded-3xl p-12 sm:p-16 text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-mint/10 border border-mint/25 mb-5 shadow-[0_0_32px_-10px_rgba(0,255,225,0.5)]">
-        <TwEmoji emoji="🏠" size={32} />
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="relative pointer-events-none select-none" aria-hidden="true">
+          <div className="rounded-2xl sample-glow">
+            <ComplexCard complex={SAMPLE_COMPLEX} onEdit={() => {}} />
+          </div>
+          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-mint/20 backdrop-blur-sm text-mint text-[10px] font-semibold tracking-wider border border-mint/30">
+            예시
+          </div>
+        </div>
       </div>
-      <div className="text-base font-semibold text-white mb-2">
-        등록된 매물이 없습니다
-      </div>
-      <div className="text-sm text-white/50 max-w-md mx-auto leading-relaxed">
+      <div className="text-center py-4 text-sm text-white/40">
         우측 하단 + 버튼을 눌러 관심 단지를 추가해보세요
       </div>
     </div>

@@ -134,6 +134,7 @@ export default function WeddingApp() {
   const [editingComplex, setEditingComplex] = useState<Complex | null>(null);
   const [assets, setAssets] = useState<PersonAsset[]>([]);
   const [sortType, setSortType] = useState<SortType>("default");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fetchHalls = useCallback(async () => {
     try {
@@ -458,40 +459,8 @@ export default function WeddingApp() {
 
   return (
     <div className="min-h-[100dvh] bg-[#020806] text-white">
-      {/* ── Sidebar (fixed; slide in/out on mobile) ─── */}
-      <aside
-        className={
-          "fixed inset-y-0 left-0 z-50 w-72 flex flex-col " +
-          "bg-[#020806] border-r border-white/10 " +
-          "transition-transform duration-300 ease-out " +
-          (sidebarOpen ? "translate-x-0" : "-translate-x-full") +
-          " md:translate-x-0"
-        }
-      >
-        {/* Mobile-only close button */}
-        <div className="md:hidden flex justify-end px-3 pt-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="메뉴 닫기"
-            className="p-2 text-white/60 hover:text-white transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 6l12 12M6 18L18 6"
-              />
-            </svg>
-          </button>
-        </div>
+      {/* ── Sidebar (desktop only — mobile uses bottom nav) ─── */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 z-50 w-72 flex-col bg-[#020806] border-r border-white/10">
 
         {/* Top: sidebar eyebrow */}
         <div className="px-6 pt-6 md:pt-8 pb-4">
@@ -666,46 +635,93 @@ export default function WeddingApp() {
         </div>
       </aside>
 
-      {/* ── Mobile backdrop ──────────────── */}
-      {sidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="메뉴 닫기"
-          className="md:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
-        />
-      )}
+      {/* ── Mobile bottom navigation (5-tab + center logo) ── */}
+      <MobileBottomNav
+        active={active}
+        onSelect={handleSelectSection}
+        menuOpen={mobileMenuOpen}
+        onMenuToggle={() => setMobileMenuOpen((v) => !v)}
+      />
 
-      {/* ── Mobile FAB hamburger (bottom-right) ──────── */}
-      {!sidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="메뉴 열기"
-          className="md:hidden fixed bottom-6 right-5 z-50 w-12 h-12 rounded-2xl bg-mint text-gray-900 flex items-center justify-center shadow-[0_8px_32px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </button>
+      {/* ── Mobile menu sheet ──────────────── */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[100]">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="메뉴 닫기"
+          />
+          <div className="absolute bottom-0 inset-x-0 bg-[#0b0f14] border-t border-white/10 rounded-t-3xl p-5 pb-8 safe-area-bottom">
+            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5" />
+            <div className="text-[10px] font-semibold text-mint/70 tracking-[0.2em] uppercase mb-3">
+              All Sections
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {ALL_SECTIONS.map((s) => {
+                const isActive = s.id === active;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      handleSelectSection(s.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={
+                      "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors " +
+                      (isActive
+                        ? "bg-mint/15 text-mint border border-mint/30"
+                        : "bg-white/[0.04] text-white/60 border border-white/5 active:bg-white/[0.08]")
+                    }
+                  >
+                    <TwEmoji emoji={s.icon} size={20} />
+                    <span className="text-[10px] leading-tight">{s.label}</span>
+                  </button>
+                );
+              })}
+              {customSections.map((c) => {
+                const isActive = c.category === active;
+                return (
+                  <button
+                    key={c.category}
+                    type="button"
+                    onClick={() => {
+                      handleSelectSection(c.category);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={
+                      "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors " +
+                      (isActive
+                        ? "bg-mint/15 text-mint border border-mint/30"
+                        : "bg-white/[0.04] text-white/60 border border-white/5 active:bg-white/[0.08]")
+                    }
+                  >
+                    <TwEmoji emoji={c.icon || "📌"} size={20} />
+                    <span className="text-[10px] leading-tight truncate max-w-[60px]">
+                      {c.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-4 w-full flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-medium text-white/60 bg-white/[0.03] border border-white/10 active:bg-white/[0.06]"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── Main column (desktop left-padded for sidebar) ── */}
-      <div className="md:pl-72 min-h-[100dvh] flex flex-col">
+      <div className="md:pl-72 min-h-[100dvh] flex flex-col pb-16 md:pb-0">
 
         {/* Section header */}
-        <div className="w-full max-w-5xl mx-auto px-5 md:px-10 pt-8 md:pt-14 pb-6">
+        <div className="w-full max-w-5xl mx-auto px-5 md:px-10 pt-6 md:pt-14 pb-6">
           <div className="text-[11px] font-semibold text-mint/70 tracking-[0.25em] uppercase mb-2">
             {activeSection.subtitle}
           </div>
@@ -794,7 +810,7 @@ export default function WeddingApp() {
           type="button"
           onClick={handleAdd}
           aria-label="웨딩홀 추가"
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
+          className="fixed bottom-20 md:bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
         >
           +
         </button>
@@ -804,7 +820,7 @@ export default function WeddingApp() {
           type="button"
           onClick={() => handleVendorAdd(activeVendorCategory)}
           aria-label={`${VENDOR_CATEGORIES[activeVendorCategory].label} 추가`}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
+          className="fixed bottom-20 md:bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
         >
           +
         </button>
@@ -814,7 +830,7 @@ export default function WeddingApp() {
           type="button"
           onClick={handleComplexAdd}
           aria-label="매물 추가"
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
+          className="fixed bottom-20 md:bottom-6 right-6 w-14 h-14 rounded-2xl bg-mint text-gray-900 text-2xl font-light flex items-center justify-center shadow-[0_12px_40px_-8px_rgba(0,255,225,0.6)] active:scale-95 transition-transform z-30"
         >
           +
         </button>
@@ -904,12 +920,32 @@ function HallsSection({
   }
 
   if (halls.length === 0) {
+    const sampleHall: WeddingHall = {
+      id: -1,
+      name: "제이오스티엘",
+      sub: "서울 구로구 · 1호선 구로역 도보 2분",
+      price: 1367,
+      guests: 180,
+      parking: 3000,
+      transport: ["subway"],
+      note: "단독홀로 프라이빗한 예식 가능. 서울역에서 1호선 직행.",
+    };
     return (
-      <EmptyState
-        icon="💒"
-        title="등록된 웨딩홀이 없습니다"
-        description="우측 하단 + 버튼을 눌러 첫 번째 웨딩홀을 추가해보세요"
-      />
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SampleOverlay>
+            <DarkHallCard
+              hall={sampleHall}
+              hallBudget={0}
+              onEdit={() => {}}
+              onDelete={() => {}}
+            />
+          </SampleOverlay>
+        </div>
+        <div className="text-center py-4 text-sm text-white/40">
+          우측 하단 + 버튼을 눌러 첫 번째 웨딩홀을 추가해보세요
+        </div>
+      </div>
     );
   }
 
@@ -1115,6 +1151,136 @@ function CustomSection({ item }: CustomSectionProps) {
   );
 }
 
+/* ── Mobile bottom nav ─────────────────────── */
+
+const WEDDING_IDS = ["halls", "studios", "dresses", "makeup"];
+const HOUSING_IDS = ["assets", "housing", "housing-routes"];
+
+interface MobileBottomNavProps {
+  active: string;
+  onSelect: (id: string) => void;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+}
+
+function MobileBottomNav({
+  active,
+  onSelect,
+  menuOpen,
+  onMenuToggle,
+}: MobileBottomNavProps) {
+  const isHome = active === "overview";
+  const isWedding = WEDDING_IDS.includes(active);
+  const isHousing = HOUSING_IDS.includes(active);
+  const isMenu =
+    !isHome && !isWedding && !isHousing && active !== "__logo__";
+
+  const tabClass = (on: boolean) =>
+    "flex flex-col items-center gap-1 flex-1 py-2 transition-colors " +
+    (on ? "text-mint" : "text-white/50 active:text-white/70");
+
+  return (
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 safe-area-bottom">
+      <div className="relative">
+        {/* Center logo — floats above the bar */}
+        <button
+          type="button"
+          onClick={() => onSelect("overview")}
+          aria-label="홈"
+          className="absolute -top-5 left-1/2 -translate-x-1/2 z-10 w-[60px] h-[60px] rounded-full bg-[#020806] p-1 flex items-center justify-center"
+        >
+          <div className="w-full h-full rounded-full bg-mint/15 border-2 border-mint flex items-center justify-center sample-glow">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/wwp-symbol.svg"
+              alt="WWP"
+              width={28}
+              height={28}
+              className="rounded-lg"
+            />
+          </div>
+        </button>
+
+        {/* Nav bar */}
+        <div className="flex items-end bg-[#020806]/95 backdrop-blur-xl border-t border-white/10 px-2 pt-2 pb-1">
+          {/* 홈 */}
+          <button
+            type="button"
+            onClick={() => onSelect("overview")}
+            className={tabClass(isHome)}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill={isHome ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              {!isHome && (
+                <polyline points="9 22 9 12 15 12 15 22" />
+              )}
+            </svg>
+            <span className="text-[9px] font-medium">홈</span>
+          </button>
+
+          {/* 예식 */}
+          <button
+            type="button"
+            onClick={() =>
+              onSelect(isWedding ? active : "halls")
+            }
+            className={tabClass(isWedding)}
+          >
+            <TwEmoji emoji="💍" size={20} />
+            <span className="text-[9px] font-medium">예식</span>
+          </button>
+
+          {/* Center spacer */}
+          <div className="flex-1 min-w-[64px]" />
+
+          {/* 부동산 */}
+          <button
+            type="button"
+            onClick={() =>
+              onSelect(isHousing ? active : "housing")
+            }
+            className={tabClass(isHousing)}
+          >
+            <TwEmoji emoji="🏠" size={20} />
+            <span className="text-[9px] font-medium">부동산</span>
+          </button>
+
+          {/* 메뉴 */}
+          <button
+            type="button"
+            onClick={onMenuToggle}
+            className={tabClass(isMenu || menuOpen)}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+            <span className="text-[9px] font-medium">메뉴</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 /* ── Shared UI ────────────────────────────── */
 
 interface EmptyStateProps {
@@ -1132,6 +1298,22 @@ function EmptyState({ icon, title, description }: EmptyStateProps) {
       <div className="text-base font-semibold text-white mb-2">{title}</div>
       <div className="text-sm text-white/50 max-w-md mx-auto leading-relaxed">
         {description}
+      </div>
+    </div>
+  );
+}
+
+/** Wraps a card in a semi-transparent, non-interactive overlay with
+ *  an "예시" badge. Used in empty states to show users what the UI
+ *  looks like before they add their own data. */
+function SampleOverlay({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative pointer-events-none select-none" aria-hidden="true">
+      <div className="rounded-2xl sample-glow">
+        {children}
+      </div>
+      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-mint/20 backdrop-blur-sm text-mint text-[10px] font-semibold tracking-wider border border-mint/30">
+        예시
       </div>
     </div>
   );

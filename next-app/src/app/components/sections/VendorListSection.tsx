@@ -113,7 +113,7 @@ export default function VendorListSection({
       </div>
 
       {sorted.length === 0 ? (
-        <EmptyState category={category} />
+        <SampleEmptyState category={category} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {sorted.map((v) => (
@@ -143,7 +143,7 @@ function VendorCard({ vendor, categoryIcon, onEdit }: VendorCardProps) {
     <button
       type="button"
       onClick={() => onEdit(vendor)}
-      className="group text-left bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
+      className="group w-full text-left bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
     >
       <div className="flex items-start gap-3 mb-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-mint/10 border border-mint/20 flex items-center justify-center">
@@ -219,21 +219,51 @@ function SkeletonGrid() {
   );
 }
 
-interface EmptyStateProps {
-  category: VendorCategory;
-}
+const SAMPLE_VENDORS: Record<VendorCategory, Vendor> = {
+  studio: {
+    id: -1,
+    name: "유디 스튜디오",
+    sub: "서울 강남구",
+    price: 200,
+    note: "프리웨딩 + 본식 스냅 패키지. 자연광 촬영 가능.",
+  },
+  dress: {
+    id: -1,
+    name: "더 브라이드",
+    sub: "서울 압구정",
+    price: 150,
+    note: "A라인 드레스 대여. 피팅 2회 포함.",
+    target: "bride",
+  },
+  makeup: {
+    id: -1,
+    name: "청담 메이크업",
+    sub: "서울 청담동",
+    price: 80,
+    note: "신부 + 혼주 메이크업. 리허설 1회 포함.",
+  },
+};
 
-function EmptyState({ category }: EmptyStateProps) {
+function SampleEmptyState({ category }: { category: VendorCategory }) {
   const meta = VENDOR_CATEGORIES[category];
+  const sample = SAMPLE_VENDORS[category];
   return (
-    <div className="bg-white/[0.03] border border-white/10 border-dashed rounded-3xl p-12 sm:p-16 text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-mint/10 border border-mint/25 mb-5 shadow-[0_0_32px_-10px_rgba(0,255,225,0.5)]">
-        <TwEmoji emoji={meta.icon} size={32} />
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="relative pointer-events-none select-none" aria-hidden="true">
+          <div className="rounded-2xl sample-glow">
+            <VendorCard
+              vendor={sample}
+              categoryIcon={meta.icon}
+              onEdit={() => {}}
+            />
+          </div>
+          <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-mint/20 backdrop-blur-sm text-mint text-[10px] font-semibold tracking-wider border border-mint/30">
+            예시
+          </div>
+        </div>
       </div>
-      <div className="text-base font-semibold text-white mb-2">
-        등록된 {meta.label}이 없습니다
-      </div>
-      <div className="text-sm text-white/50 max-w-md mx-auto leading-relaxed">
+      <div className="text-center py-4 text-sm text-white/40">
         우측 하단 + 버튼을 눌러 첫 {meta.label}을 추가해보세요
       </div>
     </div>

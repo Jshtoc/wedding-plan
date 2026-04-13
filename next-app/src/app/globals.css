@@ -101,3 +101,8 @@ body {
   color: #fff;
   min-height: 100vh;
 }
+
+/* Sample card glow — used in empty states to highlight example cards. */
+.sample-glow {
+  box-shadow: 0 0 40px -8px rgba(0, 255, 225, 0.35);
+}
