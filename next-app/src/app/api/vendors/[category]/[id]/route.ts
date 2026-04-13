@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteVendor, updateVendor } from "@/lib/db";
+import { getGroupId } from "@/lib/auth";
 import {
   isDressTarget,
   isVendorCategory,
@@ -53,6 +54,7 @@ export async function PUT(
   req: NextRequest,
   ctx: { params: Promise<{ category: string; id: string }> }
 ) {
+  const groupId = getGroupId(req.headers);
   const { category, id } = await ctx.params;
   if (!isVendorCategory(category)) {
     return NextResponse.json(
@@ -70,7 +72,7 @@ export async function PUT(
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const updated = await updateVendor(category, numId, parsed);
+    const updated = await updateVendor(groupId, category, numId, parsed);
     return NextResponse.json(updated);
   } catch (e: unknown) {
     console.error(`PUT /api/vendors/${category}/${id} error:`, e);
@@ -82,9 +84,10 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ category: string; id: string }> }
 ) {
+  const groupId = getGroupId(req.headers);
   const { category, id } = await ctx.params;
   if (!isVendorCategory(category)) {
     return NextResponse.json(
@@ -97,7 +100,7 @@ export async function DELETE(
     return NextResponse.json({ error: "잘못된 id" }, { status: 400 });
 
   try {
-    await deleteVendor(category, numId);
+    await deleteVendor(groupId, category, numId);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     console.error(`DELETE /api/vendors/${category}/${id} error:`, e);

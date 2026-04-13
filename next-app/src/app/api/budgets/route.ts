@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBudgets, upsertBudgets } from "@/lib/db";
+import { getGroupId } from "@/lib/auth";
 import {
   BudgetItem,
   isFixedCategory,
@@ -7,9 +8,10 @@ import {
   isCustomCategory,
 } from "@/data/budgets";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const budgets = await getBudgets();
+    const groupId = getGroupId(req.headers);
+    const budgets = await getBudgets(groupId);
     return NextResponse.json(budgets);
   } catch (e: unknown) {
     console.error("GET /api/budgets error:", e);
@@ -29,6 +31,7 @@ export async function GET() {
  */
 export async function PUT(req: NextRequest) {
   try {
+    const groupId = getGroupId(req.headers);
     const body = (await req.json()) as {
       items?: unknown;
     };
@@ -96,7 +99,7 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    await upsertBudgets(items);
+    await upsertBudgets(groupId, items);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     console.error("PUT /api/budgets error:", e);

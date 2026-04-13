@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createEvent, getEvents } from "@/lib/db";
+import { getGroupId } from "@/lib/auth";
 import { EVENT_TYPES, EventType, WeddingEvent } from "@/data/events";
 
 type Validated = Omit<WeddingEvent, "id">;
@@ -40,9 +41,10 @@ function validate(body: unknown): ValidationResult {
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const events = await getEvents();
+    const groupId = getGroupId(req.headers);
+    const events = await getEvents(groupId);
     return NextResponse.json(events);
   } catch (e: unknown) {
     console.error("GET /api/events error:", e);
@@ -55,12 +57,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const groupId = getGroupId(req.headers);
     const body = await req.json();
     const parsed = validate(body);
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const created = await createEvent(parsed);
+    const created = await createEvent(groupId, parsed);
     return NextResponse.json(created);
   } catch (e: unknown) {
     console.error("POST /api/events error:", e);

@@ -26,7 +26,12 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  // Forward the user's group id so API routes can filter data
+  // without re-parsing the cookie themselves.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-group-id", session.groupId || "");
+
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

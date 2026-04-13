@@ -40,6 +40,7 @@ function b64urlDecode(s: string): Uint8Array<ArrayBuffer> {
 export type SessionPayload = {
   id: string;
   role: string;
+  groupId: string;
   exp: number; // ms since epoch
 };
 
@@ -82,3 +83,15 @@ export async function verifyToken(
 
 // 7 days
 export const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 7;
+
+/**
+ * Extract the group id set by the Edge proxy. Every authenticated
+ * request has `x-group-id` injected by proxy.ts after token
+ * verification. Throws if missing (should never happen for authed
+ * requests reaching an API route).
+ */
+export function getGroupId(headers: Headers): string {
+  const g = headers.get("x-group-id");
+  if (!g) throw new Error("Missing x-group-id header (not authenticated?)");
+  return g;
+}

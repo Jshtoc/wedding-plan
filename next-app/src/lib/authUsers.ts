@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 export interface AuthUser {
   id: string;
   role: string;
+  groupId: string;
 }
 
 interface UserEntry {
@@ -47,7 +48,36 @@ function loadUsers(): UserEntry[] {
     });
   }
 
+  const u3Id = process.env.USER3_ID;
+  const u3Hash = process.env.USER3_PASSWORD_HASH;
+  if (u3Id && u3Hash) {
+    users.push({
+      id: u3Id,
+      hash: u3Hash,
+      role: process.env.USER3_ROLE || "guest",
+    });
+  }
+
   return users;
+}
+
+/**
+ * Load group membership from GROUP{N}_ID / GROUP{N}_MEMBERS env vars.
+ * Returns a Map<userId, groupId>. Users without a group get their own
+ * solo group equal to their user id.
+ */
+function loadGroups(): Map<string, string> {
+  const map = new Map<string, string>();
+  for (let n = 1; n <= 20; n++) {
+    const gId = process.env[`GROUP${n}_ID`];
+    const gMembers = process.env[`GROUP${n}_MEMBERS`];
+    if (!gId || !gMembers) continue;
+    for (const member of gMembers.split(",")) {
+      const trimmed = member.trim();
+      if (trimmed) map.set(trimmed, gId);
+    }
+  }
+  return map;
 }
 
 /**
@@ -63,6 +93,7 @@ export async function verifyCredentials(
   password: string
 ): Promise<AuthUser | null> {
   const users = loadUsers();
+  const groups = loadGroups();
 
   if (users.length === 0) {
     if (process.env.NODE_ENV === "production") {
@@ -75,8 +106,8 @@ export async function verifyCredentials(
       "[auth] No users configured. Using dev defaults — wed1 / wed1234 (husband) and wed2 / wed1234 (wife)."
     );
     if (password === "wed1234") {
-      if (id === "wed1") return { id: "wed1", role: "husband" };
-      if (id === "wed2") return { id: "wed2", role: "wife" };
+      if (id === "wed1") return { id: "wed1", role: "husband", groupId: "dev-couple" };
+      if (id === "wed2") return { id: "wed2", role: "wife", groupId: "dev-couple" };
     }
     return null;
   }
@@ -87,5 +118,9 @@ export async function verifyCredentials(
   const ok = await bcrypt.compare(password, user.hash);
   if (!ok) return null;
 
-  return { id: user.id, role: user.role };
+  // Look up the group. If no group is configured, assign a solo group
+  // equal to the user's id so they still get isolated data.
+  const groupId = groups.get(user.id) || user.id;
+
+  return { id: user.id, role: user.role, groupId };
 }

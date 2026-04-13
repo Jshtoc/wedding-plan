@@ -40,7 +40,7 @@ function complexAddress(c: Complex): string {
   return [c.city, c.district, c.dong, c.name].filter(Boolean).join(" ");
 }
 
-const NAVER_SDK_URL = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
+const NAVER_SDK_URL = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}`;
 
 export default function HousingRouteSection({ complexes }: Props) {
   // ── Selection state ──────────────────────────

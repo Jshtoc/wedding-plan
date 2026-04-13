@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     const token = await createToken({
       id: user.id,
       role: user.role,
+      groupId: user.groupId,
       exp: Date.now() + SESSION_MAX_AGE_SEC * 1000,
     });
 

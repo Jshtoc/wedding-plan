@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteEvent, updateEvent } from "@/lib/db";
+import { getGroupId } from "@/lib/auth";
 import { EVENT_TYPES, EventType, WeddingEvent } from "@/data/events";
 
 type Validated = Omit<WeddingEvent, "id">;
@@ -51,6 +52,7 @@ export async function PUT(
   ctx: { params: Promise<{ id: string }> }
 ) {
   try {
+    const groupId = getGroupId(req.headers);
     const { id } = await ctx.params;
     const numId = parseId(id);
     if (numId === null)
@@ -61,7 +63,7 @@ export async function PUT(
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const updated = await updateEvent(numId, parsed);
+    const updated = await updateEvent(groupId, numId, parsed);
     return NextResponse.json(updated);
   } catch (e: unknown) {
     console.error("PUT /api/events/[id] error:", e);
@@ -73,15 +75,16 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
   try {
+    const groupId = getGroupId(req.headers);
     const { id } = await ctx.params;
     const numId = parseId(id);
     if (numId === null)
       return NextResponse.json({ error: "잘못된 id" }, { status: 400 });
-    await deleteEvent(numId);
+    await deleteEvent(groupId, numId);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     console.error("DELETE /api/events/[id] error:", e);

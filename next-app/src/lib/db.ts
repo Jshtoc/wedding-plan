@@ -11,7 +11,14 @@ import {
 import { Complex } from "@/data/complexes";
 import { PersonAsset, AssetRole } from "@/data/assets";
 
-// DB row (snake_case) → 프론트엔드 (camelCase)
+// ═══════════════════════════════════════════════════════════════
+// Every read/write function takes a `groupId` parameter so data
+// is scoped to the calling user's group. The group_id column is
+// populated by the multi_tenant.sql migration.
+// ═══════════════════════════════════════════════════════════════
+
+/* ─────────────── Halls ─────────────── */
+
 function rowToHall(row: Record<string, unknown>): WeddingHall {
   return {
     id: row.id as number,
@@ -25,7 +32,6 @@ function rowToHall(row: Record<string, unknown>): WeddingHall {
   };
 }
 
-// 프론트엔드 (camelCase) → DB row (snake_case)
 function hallToRow(hall: Omit<WeddingHall, "id">) {
   return {
     name: hall.name,
@@ -38,41 +44,51 @@ function hallToRow(hall: Omit<WeddingHall, "id">) {
   };
 }
 
-export async function getHalls(): Promise<WeddingHall[]> {
+export async function getHalls(groupId: string): Promise<WeddingHall[]> {
   const { data, error } = await supabase
     .from("halls")
     .select("*")
+    .eq("group_id", groupId)
     .order("price", { ascending: true });
   if (error) throw error;
   return (data || []).map(rowToHall);
 }
 
-export async function createHall(hall: Omit<WeddingHall, "id">): Promise<WeddingHall> {
+export async function createHall(
+  groupId: string,
+  hall: Omit<WeddingHall, "id">
+): Promise<WeddingHall> {
   const { data, error } = await supabase
     .from("halls")
-    .insert(hallToRow(hall))
+    .insert({ ...hallToRow(hall), group_id: groupId })
     .select()
     .single();
   if (error) throw error;
   return rowToHall(data);
 }
 
-export async function updateHall(id: number, hall: Omit<WeddingHall, "id">): Promise<WeddingHall> {
+export async function updateHall(
+  groupId: string,
+  id: number,
+  hall: Omit<WeddingHall, "id">
+): Promise<WeddingHall> {
   const { data, error } = await supabase
     .from("halls")
     .update(hallToRow(hall))
     .eq("id", id)
+    .eq("group_id", groupId)
     .select()
     .single();
   if (error) throw error;
   return rowToHall(data);
 }
 
-export async function deleteHall(id: number): Promise<void> {
+export async function deleteHall(groupId: string, id: number): Promise<void> {
   const { error } = await supabase
     .from("halls")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("group_id", groupId);
   if (error) throw error;
 }
 
@@ -87,41 +103,42 @@ function rowToBudget(row: Record<string, unknown>): BudgetItem {
   };
 }
 
-export async function getBudgets(): Promise<BudgetItem[]> {
-  const { data, error } = await supabase.from("budgets").select("*");
+export async function getBudgets(groupId: string): Promise<BudgetItem[]> {
+  const { data, error } = await supabase
+    .from("budgets")
+    .select("*")
+    .eq("group_id", groupId);
   if (error) throw error;
   return (data || []).map(rowToBudget);
 }
 
-/**
- * Upsert the provided rows AND delete any custom rows (category
- * starting with "custom:") that are not in the payload. This lets the
- * client fully manage its custom list — removed items disappear from
- * the DB on save. Fixed categories (hall/studio/dress/makeup/etc) and
- * `total` are never touched by the delete step.
- */
-export async function upsertBudgets(items: BudgetItem[]): Promise<void> {
+export async function upsertBudgets(
+  groupId: string,
+  items: BudgetItem[]
+): Promise<void> {
   if (items.length === 0) return;
   const rows = items.map((i) => ({
     category: i.category,
     budget: Math.max(0, Math.floor(i.budget) || 0),
     label: i.label ?? null,
     icon: i.icon ?? null,
+    group_id: groupId,
     updated_at: new Date().toISOString(),
   }));
+  // Composite unique is (group_id, category)
   const { error: upsertError } = await supabase
     .from("budgets")
-    .upsert(rows, { onConflict: "category" });
+    .upsert(rows, { onConflict: "group_id,category" });
   if (upsertError) throw upsertError;
 
-  // Reconcile deletes: any custom:* row in the DB that is NOT in the
-  // payload should be removed. Fixed rows are left alone.
+  // Reconcile deletes: custom:* rows in THIS group not in the payload.
   const keptCustomKeys = items
     .map((i) => i.category)
     .filter((c) => c.startsWith("custom:"));
   const { data: existing, error: readError } = await supabase
     .from("budgets")
     .select("category")
+    .eq("group_id", groupId)
     .like("category", "custom:%");
   if (readError) throw readError;
   const toDelete = (existing || [])
@@ -131,6 +148,7 @@ export async function upsertBudgets(items: BudgetItem[]): Promise<void> {
     const { error: delError } = await supabase
       .from("budgets")
       .delete()
+      .eq("group_id", groupId)
       .in("category", toDelete);
     if (delError) throw delError;
   }
@@ -161,21 +179,23 @@ function eventToRow(e: Omit<WeddingEvent, "id">) {
   };
 }
 
-export async function getEvents(): Promise<WeddingEvent[]> {
+export async function getEvents(groupId: string): Promise<WeddingEvent[]> {
   const { data, error } = await supabase
     .from("events")
     .select("*")
+    .eq("group_id", groupId)
     .order("date", { ascending: true });
   if (error) throw error;
   return (data || []).map(rowToEvent);
 }
 
 export async function createEvent(
+  groupId: string,
   e: Omit<WeddingEvent, "id">
 ): Promise<WeddingEvent> {
   const { data, error } = await supabase
     .from("events")
-    .insert(eventToRow(e))
+    .insert({ ...eventToRow(e), group_id: groupId })
     .select()
     .single();
   if (error) throw error;
@@ -183,6 +203,7 @@ export async function createEvent(
 }
 
 export async function updateEvent(
+  groupId: string,
   id: number,
   e: Omit<WeddingEvent, "id">
 ): Promise<WeddingEvent> {
@@ -190,14 +211,22 @@ export async function updateEvent(
     .from("events")
     .update(eventToRow(e))
     .eq("id", id)
+    .eq("group_id", groupId)
     .select()
     .single();
   if (error) throw error;
   return rowToEvent(data);
 }
 
-export async function deleteEvent(id: number): Promise<void> {
-  const { error } = await supabase.from("events").delete().eq("id", id);
+export async function deleteEvent(
+  groupId: string,
+  id: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", id)
+    .eq("group_id", groupId);
   if (error) throw error;
 }
 
@@ -237,22 +266,27 @@ function vendorToRow(
   return base;
 }
 
-export async function getVendors(category: VendorCategory): Promise<Vendor[]> {
+export async function getVendors(
+  groupId: string,
+  category: VendorCategory
+): Promise<Vendor[]> {
   const { data, error } = await supabase
     .from(vendorTable(category))
     .select("*")
+    .eq("group_id", groupId)
     .order("price", { ascending: true });
   if (error) throw error;
   return (data || []).map(rowToVendor);
 }
 
 export async function createVendor(
+  groupId: string,
   category: VendorCategory,
   v: Omit<Vendor, "id">
 ): Promise<Vendor> {
   const { data, error } = await supabase
     .from(vendorTable(category))
-    .insert(vendorToRow(v, category))
+    .insert({ ...vendorToRow(v, category), group_id: groupId })
     .select()
     .single();
   if (error) throw error;
@@ -260,6 +294,7 @@ export async function createVendor(
 }
 
 export async function updateVendor(
+  groupId: string,
   category: VendorCategory,
   id: number,
   v: Omit<Vendor, "id">
@@ -268,6 +303,7 @@ export async function updateVendor(
     .from(vendorTable(category))
     .update(vendorToRow(v, category))
     .eq("id", id)
+    .eq("group_id", groupId)
     .select()
     .single();
   if (error) throw error;
@@ -275,13 +311,15 @@ export async function updateVendor(
 }
 
 export async function deleteVendor(
+  groupId: string,
   category: VendorCategory,
   id: number
 ): Promise<void> {
   const { error } = await supabase
     .from(vendorTable(category))
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("group_id", groupId);
   if (error) throw error;
 }
 
@@ -340,21 +378,23 @@ function complexToRow(c: Omit<Complex, "id">) {
   };
 }
 
-export async function getComplexes(): Promise<Complex[]> {
+export async function getComplexes(groupId: string): Promise<Complex[]> {
   const { data, error } = await supabase
     .from("complexes")
     .select("*")
+    .eq("group_id", groupId)
     .order("sale_price", { ascending: true });
   if (error) throw error;
   return (data || []).map(rowToComplex);
 }
 
 export async function createComplex(
+  groupId: string,
   c: Omit<Complex, "id">
 ): Promise<Complex> {
   const { data, error } = await supabase
     .from("complexes")
-    .insert(complexToRow(c))
+    .insert({ ...complexToRow(c), group_id: groupId })
     .select()
     .single();
   if (error) throw error;
@@ -362,6 +402,7 @@ export async function createComplex(
 }
 
 export async function updateComplex(
+  groupId: string,
   id: number,
   c: Omit<Complex, "id">
 ): Promise<Complex> {
@@ -369,17 +410,22 @@ export async function updateComplex(
     .from("complexes")
     .update(complexToRow(c))
     .eq("id", id)
+    .eq("group_id", groupId)
     .select()
     .single();
   if (error) throw error;
   return rowToComplex(data);
 }
 
-export async function deleteComplex(id: number): Promise<void> {
+export async function deleteComplex(
+  groupId: string,
+  id: number
+): Promise<void> {
   const { error } = await supabase
     .from("complexes")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("group_id", groupId);
   if (error) throw error;
 }
 
@@ -429,19 +475,26 @@ function assetToRow(a: Omit<PersonAsset, "id">) {
   };
 }
 
-export async function getAssets(): Promise<PersonAsset[]> {
+export async function getAssets(groupId: string): Promise<PersonAsset[]> {
   const { data, error } = await supabase
     .from("assets")
     .select("*")
+    .eq("group_id", groupId)
     .order("role", { ascending: true });
   if (error) throw error;
   return (data || []).map(rowToAsset);
 }
 
-export async function upsertAsset(a: Omit<PersonAsset, "id">): Promise<PersonAsset> {
+export async function upsertAsset(
+  groupId: string,
+  a: Omit<PersonAsset, "id">
+): Promise<PersonAsset> {
+  // Composite unique is (group_id, role)
   const { data, error } = await supabase
     .from("assets")
-    .upsert(assetToRow(a), { onConflict: "role" })
+    .upsert({ ...assetToRow(a), group_id: groupId }, {
+      onConflict: "group_id,role",
+    })
     .select()
     .single();
   if (error) throw error;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createVendor, getVendors } from "@/lib/db";
+import { getGroupId } from "@/lib/auth";
 import {
   isDressTarget,
   isVendorCategory,
@@ -44,9 +45,10 @@ function validate(body: unknown, category: VendorCategory): ValidationResult {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ category: string }> }
 ) {
+  const groupId = getGroupId(req.headers);
   const { category } = await ctx.params;
   if (!isVendorCategory(category)) {
     return NextResponse.json(
@@ -55,7 +57,7 @@ export async function GET(
     );
   }
   try {
-    const vendors = await getVendors(category);
+    const vendors = await getVendors(groupId, category);
     return NextResponse.json(vendors);
   } catch (e: unknown) {
     console.error(`GET /api/vendors/${category} error:`, e);
@@ -70,6 +72,7 @@ export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ category: string }> }
 ) {
+  const groupId = getGroupId(req.headers);
   const { category } = await ctx.params;
   if (!isVendorCategory(category)) {
     return NextResponse.json(
@@ -83,7 +86,7 @@ export async function POST(
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const created = await createVendor(category, parsed);
+    const created = await createVendor(groupId, category, parsed);
     return NextResponse.json(created);
   } catch (e: unknown) {
     console.error(`POST /api/vendors/${category} error:`, e);
