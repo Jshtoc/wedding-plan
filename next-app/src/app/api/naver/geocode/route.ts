@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { findLawdCd } from "@/data/lawdCodes";
+
 const CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID!;
 const CLIENT_SECRET = process.env.NAVER_MAP_CLIENT_SECRET!;
 const GEOCODE_URL =
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
       types: string[];
       longName: string;
       shortName: string;
+      code?: string;
     }
     const data = (await res.json()) as {
       addresses?: {
@@ -63,6 +66,10 @@ export async function POST(req: NextRequest) {
     const els = first.addressElements || [];
     const find = (type: string) =>
       els.find((e) => e.types.includes(type))?.shortName || "";
+    // 법정동코드 — Naver doesn't return codes, so we use a static lookup
+    const cityName = find("SIDO");
+    const districtName = find("SIGUGUN");
+    const lawdCd = findLawdCd(cityName, districtName);
 
     return NextResponse.json({
       lat: parseFloat(first.y),
@@ -73,6 +80,8 @@ export async function POST(req: NextRequest) {
       city: find("SIDO"),
       district: find("SIGUGUN"),
       dong: find("DONGMYUN") || find("RI"),
+      // 법정동코드 (5자리) for data.go.kr real estate API
+      lawdCd,
     });
   } catch (e: unknown) {
     console.error("POST /api/naver/geocode error:", e);

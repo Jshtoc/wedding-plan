@@ -116,6 +116,22 @@ export default function ComplexFormModal({
   const [addrQuery, setAddrQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [lawdCd, setLawdCd] = useState("");
+  const [fetchingPrices, setFetchingPrices] = useState(false);
+
+  // 면적별 가격 데이터 (실거래가 API 결과)
+  interface AreaPrice {
+    area: number;
+    lastTradePrice: number;
+    jeonsePrice: number;
+    peakPrice: number;
+    lowPrice: number;
+    tradeCount: number;
+    rentCount: number;
+  }
+  const [areaPrices, setAreaPrices] = useState<AreaPrice[]>([]);
+  const [selectedArea, setSelectedArea] = useState<number | null>(null);
+  const [areaUnit, setAreaUnit] = useState<"sqm" | "pyeong">("sqm");
   const [deleting, setDeleting] = useState(false);
   const showAlert = useAlert();
   const showConfirm = useConfirm();
@@ -198,18 +214,64 @@ export default function ComplexFormModal({
       setLat(data.lat);
       setLng(data.lng);
       setFullAddress(data.roadAddress || q);
+      if (data.lawdCd) setLawdCd(data.lawdCd);
       // 시/구/동 자동 채움 (비어있을 때만)
       if (data.city && !city) setCity(data.city);
       if (data.district && !district) setDistrict(data.district);
       if (data.dong && !dong) setDong(data.dong);
       // 단지명도 비어있으면 검색어로 채움
       if (!name && q) setName(q);
+      // 법정동코드 있으면 면적 목록 조회 (가격은 면적 선택 시)
+      if (data.lawdCd) {
+        fetchAreaList(data.lawdCd, q);
+      }
     } catch (e: unknown) {
       setSearchError(e instanceof Error ? e.message : "네트워크 오류");
     } finally {
       setSearching(false);
       loadingCtx.hide();
     }
+  };
+
+  const fetchAreaList = async (code: string, searchName: string) => {
+    setFetchingPrices(true);
+    setAreaPrices([]);
+    setSelectedArea(null);
+    try {
+      const res = await fetch("/api/realestate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lawdCd: code,
+          aptName: name || searchName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.warn("실거래가 조회 실패:", data.error);
+        return;
+      }
+      if (data.matchedName && !name) setName(data.matchedName);
+      if (data.areas && data.areas.length > 0) {
+        setAreaPrices(data.areas);
+      }
+    } catch {
+      // silent
+    } finally {
+      setFetchingPrices(false);
+    }
+  };
+
+  const handleSelectArea = (ap: AreaPrice) => {
+    setSelectedArea(ap.area);
+    setArea(`${ap.area}㎡`);
+    // 가격 자동 채움 (덮어쓰기 — 면적 변경이니까)
+    if (ap.lastTradePrice > 0) setLastTradePrice(ap.lastTradePrice);
+    if (ap.jeonsePrice > 0) setJeonsePrice(ap.jeonsePrice);
+    if (ap.peakPrice > 0) setPeakPrice(ap.peakPrice);
+    if (ap.lowPrice > 0) setLowPrice(ap.lowPrice);
+    // 매매가도 직전 실거래가로 설정 (사용자가 수정 가능)
+    if (ap.lastTradePrice > 0 && !salePrice) setSalePrice(ap.lastTradePrice);
   };
 
   const handleSave = async () => {
@@ -304,32 +366,52 @@ export default function ComplexFormModal({
               </div>
               {/* 주소 검색 */}
               <div>
-                <label className={label}>주소 검색</label>
+                <label className={label}>주소</label>
                 <div className="flex gap-2">
                   <input
-                    value={addrQuery}
+                    value={fullAddress || addrQuery}
                     onChange={(e) => {
-                      setAddrQuery(e.target.value);
-                      setSearchError(null);
+                      if (!fullAddress) {
+                        setAddrQuery(e.target.value);
+                        setSearchError(null);
+                      }
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" && !fullAddress) {
                         e.preventDefault();
                         handleSearch();
                       }
                     }}
                     placeholder="단지명 또는 도로명주소 입력"
                     className={input + " flex-1"}
-                    disabled={searching}
+                    disabled={searching || !!fullAddress}
                   />
-                  <button
-                    type="button"
-                    onClick={handleSearch}
-                    disabled={searching}
-                    className={ghostBtn + " whitespace-nowrap"}
-                  >
-                    {searching ? "검색중..." : "검색"}
-                  </button>
+                  {fullAddress ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFullAddress("");
+                        setAddrQuery("");
+                        setLat(undefined);
+                        setLng(undefined);
+                        setLawdCd("");
+                        setAreaPrices([]);
+                        setSelectedArea(null);
+                      }}
+                      className={ghostBtn + " whitespace-nowrap"}
+                    >
+                      변경
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSearch}
+                      disabled={searching || !addrQuery.trim()}
+                      className={ghostBtn + " whitespace-nowrap"}
+                    >
+                      {searching ? "검색중..." : "검색"}
+                    </button>
+                  )}
                 </div>
                 {searchError && (
                   <div className="mt-2 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/10 border border-red-400/20 px-3 py-2 rounded-lg">
@@ -338,13 +420,61 @@ export default function ComplexFormModal({
                   </div>
                 )}
                 {fullAddress && (
-                  <div className="mt-2 flex items-center gap-2 text-[12px] text-mint bg-mint/[0.06] border border-mint/20 px-3 py-2 rounded-lg">
-                    <TwEmoji emoji="📍" size={13} className="flex-shrink-0" />
-                    <span className="flex-1">{fullAddress}</span>
-                    {lat && lng && (
-                      <span className="text-[10px] text-white/30 tabular-nums flex-shrink-0">
-                        {lat.toFixed(4)}, {lng.toFixed(4)}
-                      </span>
+                  <div className="mt-2 space-y-2">
+                    {fetchingPrices && (
+                      <div className="flex items-center gap-2 text-[11px] text-white/50 px-1">
+                        <svg className="animate-spin w-3.5 h-3.5 text-mint" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.2" />
+                          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                        </svg>
+                        실거래가 조회 중...
+                      </div>
+                    )}
+                    {/* 면적 선택 버튼 */}
+                    {areaPrices.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="text-[10px] text-white/40">
+                            전용면적 선택 → 가격정보 자동 입력
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAreaUnit((u) => u === "sqm" ? "pyeong" : "sqm")}
+                            className="text-[10px] text-mint/70 hover:text-mint transition-colors"
+                          >
+                            {areaUnit === "sqm" ? "평수로 보기" : "㎡로 보기"}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {areaPrices.map((ap) => {
+                            const active = selectedArea === ap.area;
+                            const label = areaUnit === "sqm"
+                              ? `${ap.area}㎡`
+                              : `${Math.round(ap.area / 3.306)}평`;
+                            return (
+                              <button
+                                key={ap.area}
+                                type="button"
+                                onClick={() => handleSelectArea(ap)}
+                                className={
+                                  "px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors " +
+                                  (active
+                                    ? "bg-mint text-gray-900"
+                                    : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
+                                }
+                              >
+                                {label}
+                                <span className={
+                                  "ml-1 text-[9px] " +
+                                  (active ? "text-gray-900/60" : "text-white/30")
+                                }>
+                                  ({ap.tradeCount}건)
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

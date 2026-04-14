@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Complex, jeonseRatio, gap, dropFromPeak } from "@/data/complexes";
 import TwEmoji from "../ui/TwEmoji";
 import HousingGuide from "./HousingGuide";
@@ -12,6 +12,32 @@ interface Props {
 }
 
 type SortType = "default" | "price" | "gap" | "name";
+type ViewMode = "list" | "compare";
+
+const SORT_OPTIONS: { type: SortType; label: string }[] = [
+  { type: "default", label: "기본" },
+  { type: "price", label: "매매가 낮은순" },
+  { type: "gap", label: "갭 적은순" },
+  { type: "name", label: "이름순" },
+];
+
+/** Format price for chart labels — e.g. 29500 → "2.95억" */
+function chartPrice(v: number): string {
+  if (!v) return "-";
+  if (v >= 10000) return `${(v / 10000).toFixed(2)}억`;
+  return `${v.toLocaleString()}만`;
+}
+
+const BAR_COLORS = [
+  "#00FFE1",
+  "#10b981",
+  "#60a5fa",
+  "#f472b6",
+  "#fbbf24",
+  "#a78bfa",
+  "#fb7185",
+  "#22d3ee",
+];
 
 export default function HousingSection({
   complexes,
@@ -19,6 +45,9 @@ export default function HousingSection({
   onEdit,
 }: Props) {
   const [sortType, setSortType] = useState<SortType>("default");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
+  const [sortOpen, setSortOpen] = useState(false);
 
   const sorted = useMemo(() => {
     const list = [...complexes];
@@ -41,48 +70,467 @@ export default function HousingSection({
     return list;
   }, [complexes, sortType]);
 
-  const sortOptions: { type: SortType; label: string }[] = [
-    { type: "default", label: "기본" },
-    { type: "price", label: "매매가 낮은순" },
-    { type: "gap", label: "갭 적은순" },
-    { type: "name", label: "이름순" },
-  ];
+  const compareList = useMemo(
+    () => complexes.filter((c) => compareIds.has(c.id)),
+    [complexes, compareIds]
+  );
+
+  const toggleCompare = (id: number) => {
+    setCompareIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   if (loading) return <SkeletonGrid />;
+
+  const currentSort = SORT_OPTIONS.find((o) => o.type === sortType)!;
 
   return (
     <div>
       {/* Guide */}
       <HousingGuide />
 
-      {/* Sort bar */}
-      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none">
-        {sortOptions.map((opt) => (
+      {/* Toolbar: view toggle (left) + sort dropdown (right) */}
+      <div className="flex items-center justify-between mb-6">
+        {/* View mode toggle */}
+        <div className="inline-flex p-1 bg-white/[0.04] border border-white/10 rounded-xl">
           <button
-            key={opt.type}
             type="button"
-            onClick={() => setSortType(opt.type)}
+            onClick={() => setViewMode("list")}
             className={
-              "flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-colors " +
-              (sortType === opt.type
+              "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors " +
+              (viewMode === "list"
+                ? "bg-mint text-gray-900"
+                : "text-white/60 hover:text-white")
+            }
+          >
+            <TwEmoji emoji="📋" size={13} /> 리스트
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("compare")}
+            className={
+              "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors " +
+              (viewMode === "compare"
+                ? "bg-mint text-gray-900"
+                : "text-white/60 hover:text-white")
+            }
+          >
+            <TwEmoji emoji="📊" size={13} /> 비교
+            {compareIds.size > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-mint/20 text-mint text-[9px] font-bold">
+                {compareIds.size}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Sort dropdown */}
+        {viewMode === "list" && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSortOpen((v) => !v)}
+              className="flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-medium text-white/60 hover:text-white bg-white/[0.04] border border-white/10 hover:border-white/20 transition-colors"
+            >
+              {currentSort.label}
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className={
+                  "transition-transform " + (sortOpen ? "rotate-180" : "")
+                }
+              >
+                <path d="M4 6L8 10L12 6" />
+              </svg>
+            </button>
+            {sortOpen && (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-10"
+                  onClick={() => setSortOpen(false)}
+                  aria-label="닫기"
+                />
+                <div className="absolute right-0 top-full mt-1 z-20 w-40 py-1 rounded-xl bg-[#0b0f14] border border-white/15 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.8)]">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.type}
+                      type="button"
+                      onClick={() => {
+                        setSortType(opt.type);
+                        setSortOpen(false);
+                      }}
+                      className={
+                        "w-full text-left px-4 py-2 text-[11px] transition-colors " +
+                        (sortType === opt.type
+                          ? "text-mint font-semibold bg-mint/10"
+                          : "text-white/70 hover:bg-white/[0.06] hover:text-white")
+                      }
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── List view ── */}
+      {viewMode === "list" && (
+        <>
+          {sorted.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {sorted.map((c) => (
+                <ComplexCard key={c.id} complex={c} onEdit={onEdit} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Compare view ── */}
+      {viewMode === "compare" && (
+        <div className="space-y-6">
+          {/* Selection chips */}
+          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div className="text-[10px] font-semibold text-mint/70 tracking-[0.2em] uppercase mb-3">
+              비교할 매물 선택
+            </div>
+            <div className="space-y-2">
+              {complexes.map((c) => {
+                const checked = compareIds.has(c.id);
+                return (
+                  <label
+                    key={c.id}
+                    className={
+                      "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border " +
+                      (checked
+                        ? "bg-mint/[0.08] border-mint/30"
+                        : "bg-white/[0.02] border-white/5 hover:border-white/10")
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleCompare(c.id)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={
+                        "flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold border transition-colors " +
+                        (checked
+                          ? "bg-mint border-mint text-gray-900"
+                          : "bg-white/[0.06] border-white/20 text-transparent")
+                      }
+                    >
+                      {checked && "✓"}
+                    </span>
+                    <span className="flex-1 text-sm text-white truncate">
+                      {c.name}
+                    </span>
+                    {c.salePrice > 0 && (
+                      <span className="text-[11px] text-mint/80 tabular-nums flex-shrink-0">
+                        {chartPrice(c.salePrice)}
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chart */}
+          {compareList.length >= 2 ? (
+            <ComparisonChart complexes={compareList} />
+          ) : (
+            <div className="text-center py-10 text-sm text-white/40">
+              비교할 매물을 2개 이상 선택해주세요
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Comparison multi-line chart (SVG) ──────────────────────── */
+
+interface ComparisonChartProps {
+  complexes: Complex[];
+}
+
+interface MetricDef {
+  key: string;
+  label: string;
+  getValue: (c: Complex) => number;
+  format: (v: number) => string;
+}
+
+const ALL_METRICS: Record<string, MetricDef> = {
+  sale: { key: "sale", label: "현재 매매가", getValue: (c) => c.salePrice, format: chartPrice },
+  lastTrade: { key: "lastTrade", label: "직전 실거래가", getValue: (c) => c.lastTradePrice, format: chartPrice },
+  peak: { key: "peak", label: "전고점", getValue: (c) => c.peakPrice, format: chartPrice },
+  pyeong: { key: "pyeong", label: "평단가", getValue: (c) => c.pyeongPrice, format: chartPrice },
+  school: {
+    key: "school",
+    label: "학업성취율",
+    getValue: (c) => {
+      const s = c.schoolScore?.replace(/[^0-9.]/g, "");
+      return s ? parseFloat(s) : 0;
+    },
+    format: (v) => (v > 0 ? `${v}%` : "-"),
+  },
+};
+
+/** Tab groups — each tab shows multiple metrics as X-axis points,
+ *  with each complex as its own colored line. */
+const CHART_TABS: { key: string; label: string; metricKeys: string[] }[] = [
+  { key: "price", label: "매매가 vs 실거래가", metricKeys: ["lastTrade", "sale"] },
+  { key: "peak", label: "전고점 비교", metricKeys: ["peak", "sale"] },
+  { key: "pyeong", label: "평단가", metricKeys: ["pyeong"] },
+  { key: "school", label: "학업성취율", metricKeys: ["school"] },
+];
+
+function ComparisonChart({ complexes }: ComparisonChartProps) {
+  const [activeTab, setActiveTab] = useState(CHART_TABS[0].key);
+  const tab = CHART_TABS.find((t) => t.key === activeTab) || CHART_TABS[0];
+  const metrics = tab.metricKeys.map((k) => ALL_METRICS[k]);
+
+  // Collect all values to determine Y range
+  const allVals: number[] = [];
+  complexes.forEach((c) => metrics.forEach((m) => {
+    const v = m.getValue(c);
+    if (v > 0) allVals.push(v);
+  }));
+  const max = allVals.length > 0 ? Math.max(...allVals) : 1;
+  const min = allVals.length > 0 ? Math.min(...allVals) : 0;
+  const range = max - min || 1;
+  // Add 10% padding top/bottom
+  const yMin = min - range * 0.1;
+  const yMax = max + range * 0.1;
+  const yRange = yMax - yMin;
+
+  // SVG dimensions — generous padding so labels stay inside
+  const W = 600;
+  const H = 300;
+  const PAD_L = 90;
+  const PAD_R = 90;
+  const PAD_T = 50;
+  const PAD_B = 60;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+
+  // X positions — inset from edges so dots sit at text center, not edge
+  const INSET = 40;
+  const innerW = chartW - INSET * 2;
+  const xPositions = metrics.map(
+    (_, i) =>
+      PAD_L +
+      INSET +
+      (metrics.length > 1 ? (innerW / (metrics.length - 1)) * i : innerW / 2)
+  );
+
+  const yScale = (v: number) =>
+    PAD_T + chartH - ((v - yMin) / yRange) * chartH;
+
+  // Grid lines
+  const gridCount = 5;
+  const gridLines = Array.from({ length: gridCount }, (_, i) => {
+    const v = yMin + (yRange / (gridCount - 1)) * i;
+    return { y: yScale(v), label: metrics[0].format(Math.round(v)) };
+  });
+
+  return (
+    <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6 space-y-5">
+      <div>
+        <div className="text-[10px] font-semibold text-mint/70 tracking-[0.2em] uppercase mb-1">
+          Comparison
+        </div>
+        <div className="text-lg font-semibold text-white tracking-tight">
+          매물 비교
+        </div>
+      </div>
+
+      {/* Tab group selector */}
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+        {CHART_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setActiveTab(t.key)}
+            className={
+              "flex-shrink-0 px-3.5 py-2 rounded-lg text-[11px] font-medium transition-colors " +
+              (activeTab === t.key
                 ? "bg-mint text-gray-900"
                 : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
             }
           >
-            {opt.label}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {sorted.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {sorted.map((c) => (
-            <ComplexCard key={c.id} complex={c} onEdit={onEdit} />
+      {/* Legend — one color per complex */}
+      <div className="flex flex-wrap gap-3">
+        {complexes.map((c, i) => (
+          <div key={c.id} className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-sm flex-shrink-0"
+              // eslint-disable-next-line react/forbid-dom-props
+              style={{ background: BAR_COLORS[i % BAR_COLORS.length] }}
+            />
+            <span className="text-[11px] text-white/80 truncate max-w-[120px]">
+              {c.name}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* SVG chart */}
+      <div className="w-full overflow-x-auto scrollbar-none">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full min-w-[400px]"
+          aria-label={`${tab.label} 비교 차트`}
+        >
+          {/* Grid */}
+          {gridLines.map((g, i) => (
+            <g key={i}>
+              <line
+                x1={PAD_L}
+                x2={W - PAD_R}
+                y1={g.y}
+                y2={g.y}
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1"
+              />
+              <text
+                x={PAD_L - 8}
+                y={g.y + 4}
+                textAnchor="end"
+                className="text-[9px] fill-white/30"
+              >
+                {g.label}
+              </text>
+            </g>
+          ))}
+
+          {/* X-axis metric labels */}
+          {metrics.map((m, i) => (
+            <text
+              key={m.key}
+              x={xPositions[i]}
+              y={H - PAD_B + 20}
+              textAnchor="middle"
+              className="text-[10px] fill-white/50 font-medium"
+            >
+              {m.label}
+            </text>
+          ))}
+
+          {/* One line per complex */}
+          {complexes.map((c, ci) => {
+            const color = BAR_COLORS[ci % BAR_COLORS.length];
+            const pts = metrics.map((m, mi) => {
+              const v = m.getValue(c);
+              return { x: xPositions[mi], y: yScale(v), val: v };
+            }).filter((p) => p.val > 0);
+
+            if (pts.length === 0) return null;
+
+            const path = pts
+              .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+              .join(" ");
+
+            return (
+              <g key={c.id}>
+                {/* Line */}
+                {pts.length > 1 && (
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+                {/* Dots + value labels */}
+                {pts.map((p, pi) => {
+                  const labelY = p.y - 14 + ci * -14;
+                  return (
+                    <g key={pi}>
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r="5"
+                        fill={color}
+                        stroke="#020806"
+                        strokeWidth="2"
+                      />
+                      <text
+                        x={p.x}
+                        y={Math.max(labelY, PAD_T - 4)}
+                        textAnchor="middle"
+                        className="text-[9px] font-semibold"
+                        fill={color}
+                      >
+                        {metrics[pi].format(p.val)}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Data table — shows all metrics for each complex */}
+      <div className="rounded-xl bg-white/[0.03] border border-white/5 overflow-hidden">
+        <div className="grid gap-px bg-white/5" style={{ gridTemplateColumns: `1fr ${metrics.map(() => "1fr").join(" ")}` }}>
+          {/* Header row */}
+          <div className="bg-[#0b0f14] px-3 py-2 text-[10px] text-white/40 font-medium">
+            매물
+          </div>
+          {metrics.map((m) => (
+            <div key={m.key} className="bg-[#0b0f14] px-3 py-2 text-[10px] text-white/40 font-medium text-right">
+              {m.label}
+            </div>
+          ))}
+          {/* Data rows */}
+          {complexes.map((c, i) => (
+            <React.Fragment key={c.id}>
+              <div className="bg-[#0b0f14] px-3 py-2.5 flex items-center gap-2">
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  // eslint-disable-next-line react/forbid-dom-props
+                  style={{ background: BAR_COLORS[i % BAR_COLORS.length] }}
+                />
+                <span className="text-[11px] text-white/80 truncate">{c.name}</span>
+              </div>
+              {metrics.map((m) => (
+                <div key={m.key} className="bg-[#0b0f14] px-3 py-2.5 text-[11px] font-semibold text-white tabular-nums text-right">
+                  {m.format(m.getValue(c))}
+                </div>
+              ))}
+            </React.Fragment>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
