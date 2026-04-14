@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Complex, jeonseRatio, gap, dropFromPeak } from "@/data/complexes";
+import { Complex, jeonseRatio, gap, dropFromPeak, maxSchoolScore, parseSchools } from "@/data/complexes";
 import TwEmoji from "../ui/TwEmoji";
 import HousingGuide from "./HousingGuide";
 
@@ -266,7 +266,7 @@ export default function HousingSection({
   );
 }
 
-/* ── Comparison multi-line chart (SVG) ──────────────────────── */
+/* ── Comparison radar chart (SVG) ───────────────────────────── */
 
 interface ComparisonChartProps {
   complexes: Complex[];
@@ -280,78 +280,63 @@ interface MetricDef {
 }
 
 const ALL_METRICS: Record<string, MetricDef> = {
-  sale: { key: "sale", label: "현재 매매가", getValue: (c) => c.salePrice, format: chartPrice },
-  lastTrade: { key: "lastTrade", label: "직전 실거래가", getValue: (c) => c.lastTradePrice, format: chartPrice },
+  sale: { key: "sale", label: "매매가", getValue: (c) => c.salePrice, format: chartPrice },
+  lastTrade: { key: "lastTrade", label: "실거래가", getValue: (c) => c.lastTradePrice, format: chartPrice },
   peak: { key: "peak", label: "전고점", getValue: (c) => c.peakPrice, format: chartPrice },
   pyeong: { key: "pyeong", label: "평단가", getValue: (c) => c.pyeongPrice, format: chartPrice },
   school: {
     key: "school",
     label: "학업성취율",
-    getValue: (c) => {
-      const s = c.schoolScore?.replace(/[^0-9.]/g, "");
-      return s ? parseFloat(s) : 0;
-    },
+    getValue: (c) => maxSchoolScore(c),
     format: (v) => (v > 0 ? `${v}%` : "-"),
   },
 };
 
-/** Tab groups — each tab shows multiple metrics as X-axis points,
- *  with each complex as its own colored line. */
-const CHART_TABS: { key: string; label: string; metricKeys: string[] }[] = [
-  { key: "price", label: "매매가 vs 실거래가", metricKeys: ["lastTrade", "sale"] },
-  { key: "peak", label: "전고점 비교", metricKeys: ["peak", "sale"] },
-  { key: "pyeong", label: "평단가", metricKeys: ["pyeong"] },
-  { key: "school", label: "학업성취율", metricKeys: ["school"] },
+/** Radar chart uses all metrics at once — no tabs needed. */
+const RADAR_METRICS: MetricDef[] = [
+  ALL_METRICS.sale,
+  ALL_METRICS.lastTrade,
+  ALL_METRICS.peak,
+  ALL_METRICS.pyeong,
+  ALL_METRICS.school,
 ];
 
 function ComparisonChart({ complexes }: ComparisonChartProps) {
-  const [activeTab, setActiveTab] = useState(CHART_TABS[0].key);
-  const tab = CHART_TABS.find((t) => t.key === activeTab) || CHART_TABS[0];
-  const metrics = tab.metricKeys.map((k) => ALL_METRICS[k]);
+  const metrics = RADAR_METRICS;
+  const n = metrics.length;
 
-  // Collect all values to determine Y range
-  const allVals: number[] = [];
-  complexes.forEach((c) => metrics.forEach((m) => {
-    const v = m.getValue(c);
-    if (v > 0) allVals.push(v);
-  }));
-  const max = allVals.length > 0 ? Math.max(...allVals) : 1;
-  const min = allVals.length > 0 ? Math.min(...allVals) : 0;
-  const range = max - min || 1;
-  // Add 10% padding top/bottom
-  const yMin = min - range * 0.1;
-  const yMax = max + range * 0.1;
-  const yRange = yMax - yMin;
+  // SVG dimensions
+  const SIZE = 340;
+  const CX = SIZE / 2;
+  const CY = SIZE / 2;
+  const R = 120; // max radius
+  const RINGS = 4; // concentric rings
 
-  // SVG dimensions — generous padding so labels stay inside
-  const W = 600;
-  const H = 300;
-  const PAD_L = 90;
-  const PAD_R = 90;
-  const PAD_T = 50;
-  const PAD_B = 60;
-  const chartW = W - PAD_L - PAD_R;
-  const chartH = H - PAD_T - PAD_B;
-
-  // X positions — inset from edges so dots sit at text center, not edge
-  const INSET = 40;
-  const innerW = chartW - INSET * 2;
-  const xPositions = metrics.map(
-    (_, i) =>
-      PAD_L +
-      INSET +
-      (metrics.length > 1 ? (innerW / (metrics.length - 1)) * i : innerW / 2)
-  );
-
-  const yScale = (v: number) =>
-    PAD_T + chartH - ((v - yMin) / yRange) * chartH;
-
-  // Grid lines
-  const gridCount = 5;
-  const gridLines = Array.from({ length: gridCount }, (_, i) => {
-    const v = yMin + (yRange / (gridCount - 1)) * i;
-    return { y: yScale(v), label: metrics[0].format(Math.round(v)) };
+  // Compute max value per metric (for normalization to 0–1)
+  const maxPerMetric = metrics.map((m) => {
+    const vals = complexes.map((c) => m.getValue(c)).filter((v) => v > 0);
+    return vals.length > 0 ? Math.max(...vals) : 1;
   });
+
+  // Angle per axis (starting from top, clockwise)
+  const angleStep = (2 * Math.PI) / n;
+  const axisAngle = (i: number) => -Math.PI / 2 + angleStep * i;
+
+  // Convert (metricIndex, normalizedValue 0–1) to SVG x,y
+  const toXY = (mi: number, norm: number) => ({
+    x: CX + R * norm * Math.cos(axisAngle(mi)),
+    y: CY + R * norm * Math.sin(axisAngle(mi)),
+  });
+
+  // Build polygon path for a complex
+  const polygonPath = (c: Complex) => {
+    const points = metrics.map((m, mi) => {
+      const raw = m.getValue(c);
+      const norm = maxPerMetric[mi] > 0 ? raw / maxPerMetric[mi] : 0;
+      return toXY(mi, Math.min(norm, 1));
+    });
+    return points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") + "Z";
+  };
 
   return (
     <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6 space-y-5">
@@ -364,32 +349,13 @@ function ComparisonChart({ complexes }: ComparisonChartProps) {
         </div>
       </div>
 
-      {/* Tab group selector */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
-        {CHART_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setActiveTab(t.key)}
-            className={
-              "flex-shrink-0 px-3.5 py-2 rounded-lg text-[11px] font-medium transition-colors " +
-              (activeTab === t.key
-                ? "bg-mint text-gray-900"
-                : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
-            }
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Legend — one color per complex */}
+      {/* Legend */}
       <div className="flex flex-wrap gap-3">
         {complexes.map((c, i) => (
           <div key={c.id} className="flex items-center gap-2">
             <span
               className="w-3 h-3 rounded-sm flex-shrink-0"
-              // eslint-disable-next-line react/forbid-dom-props
+               
               style={{ background: BAR_COLORS[i % BAR_COLORS.length] }}
             />
             <span className="text-[11px] text-white/80 truncate max-w-[120px]">
@@ -399,98 +365,88 @@ function ComparisonChart({ complexes }: ComparisonChartProps) {
         ))}
       </div>
 
-      {/* SVG chart */}
-      <div className="w-full overflow-x-auto scrollbar-none">
+      {/* SVG radar chart */}
+      <div className="flex justify-center">
         <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="w-full min-w-[400px]"
-          aria-label={`${tab.label} 비교 차트`}
+          viewBox={`0 0 ${SIZE} ${SIZE}`}
+          className="w-full max-w-[380px]"
+          aria-label="매물 비교 레이더 차트"
         >
-          {/* Grid */}
-          {gridLines.map((g, i) => (
-            <g key={i}>
-              <line
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={g.y}
-                y2={g.y}
+          {/* Concentric rings */}
+          {Array.from({ length: RINGS }, (_, ri) => {
+            const pts = metrics
+              .map((_, mi) => {
+                const p = toXY(mi, (ri + 1) / RINGS);
+                return `${p.x},${p.y}`;
+              })
+              .join(" ");
+            return (
+              <polygon
+                key={ri}
+                points={pts}
+                fill="none"
                 stroke="rgba(255,255,255,0.06)"
                 strokeWidth="1"
               />
-              <text
-                x={PAD_L - 8}
-                y={g.y + 4}
-                textAnchor="end"
-                className="text-[9px] fill-white/30"
-              >
-                {g.label}
-              </text>
-            </g>
-          ))}
+            );
+          })}
 
-          {/* X-axis metric labels */}
-          {metrics.map((m, i) => (
-            <text
-              key={m.key}
-              x={xPositions[i]}
-              y={H - PAD_B + 20}
-              textAnchor="middle"
-              className="text-[10px] fill-white/50 font-medium"
-            >
-              {m.label}
-            </text>
-          ))}
+          {/* Axis lines + labels */}
+          {metrics.map((m, mi) => {
+            const end = toXY(mi, 1);
+            const labelPos = toXY(mi, 1.2);
+            return (
+              <g key={m.key}>
+                <line
+                  x1={CX}
+                  y1={CY}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeWidth="1"
+                />
+                <text
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className="text-[10px] fill-white/50 font-medium"
+                >
+                  {m.label}
+                </text>
+              </g>
+            );
+          })}
 
-          {/* One line per complex */}
+          {/* Complex polygons (filled, semi-transparent) */}
           {complexes.map((c, ci) => {
             const color = BAR_COLORS[ci % BAR_COLORS.length];
-            const pts = metrics.map((m, mi) => {
-              const v = m.getValue(c);
-              return { x: xPositions[mi], y: yScale(v), val: v };
-            }).filter((p) => p.val > 0);
-
-            if (pts.length === 0) return null;
-
-            const path = pts
-              .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
-              .join(" ");
-
             return (
               <g key={c.id}>
-                {/* Line */}
-                {pts.length > 1 && (
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                )}
-                {/* Dots + value labels */}
-                {pts.map((p, pi) => {
-                  const labelY = p.y - 14 + ci * -14;
+                <path
+                  d={polygonPath(c)}
+                  fill={color}
+                  fillOpacity={0.15}
+                  stroke={color}
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                {/* Dots on vertices */}
+                {metrics.map((m, mi) => {
+                  const raw = m.getValue(c);
+                  const norm =
+                    maxPerMetric[mi] > 0 ? raw / maxPerMetric[mi] : 0;
+                  const p = toXY(mi, Math.min(norm, 1));
                   return (
-                    <g key={pi}>
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r="5"
-                        fill={color}
-                        stroke="#020806"
-                        strokeWidth="2"
-                      />
-                      <text
-                        x={p.x}
-                        y={Math.max(labelY, PAD_T - 4)}
-                        textAnchor="middle"
-                        className="text-[9px] font-semibold"
-                        fill={color}
-                      >
-                        {metrics[pi].format(p.val)}
-                      </text>
-                    </g>
+                    <circle
+                      key={mi}
+                      cx={p.x}
+                      cy={p.y}
+                      r="4"
+                      fill={color}
+                      stroke="#020806"
+                      strokeWidth="1.5"
+                    />
                   );
                 })}
               </g>
@@ -499,31 +455,47 @@ function ComparisonChart({ complexes }: ComparisonChartProps) {
         </svg>
       </div>
 
-      {/* Data table — shows all metrics for each complex */}
-      <div className="rounded-xl bg-white/[0.03] border border-white/5 overflow-hidden">
-        <div className="grid gap-px bg-white/5" style={{ gridTemplateColumns: `1fr ${metrics.map(() => "1fr").join(" ")}` }}>
-          {/* Header row */}
+      {/* Data table */}
+      <div className="rounded-xl bg-white/[0.03] border border-white/5 overflow-x-auto">
+        <div
+          className="grid gap-px bg-white/5 min-w-[480px]"
+           
+          style={{
+            gridTemplateColumns: `minmax(80px,1fr) ${metrics.map(() => "1fr").join(" ")}`,
+          }}
+        >
+          {/* Header */}
           <div className="bg-[#0b0f14] px-3 py-2 text-[10px] text-white/40 font-medium">
             매물
           </div>
           {metrics.map((m) => (
-            <div key={m.key} className="bg-[#0b0f14] px-3 py-2 text-[10px] text-white/40 font-medium text-right">
+            <div
+              key={m.key}
+              className="bg-[#0b0f14] px-3 py-2 text-[10px] text-white/40 font-medium text-right"
+            >
               {m.label}
             </div>
           ))}
-          {/* Data rows */}
+          {/* Rows */}
           {complexes.map((c, i) => (
             <React.Fragment key={c.id}>
               <div className="bg-[#0b0f14] px-3 py-2.5 flex items-center gap-2">
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
-                  // eslint-disable-next-line react/forbid-dom-props
-                  style={{ background: BAR_COLORS[i % BAR_COLORS.length] }}
+                   
+                  style={{
+                    background: BAR_COLORS[i % BAR_COLORS.length],
+                  }}
                 />
-                <span className="text-[11px] text-white/80 truncate">{c.name}</span>
+                <span className="text-[11px] text-white/80 truncate">
+                  {c.name}
+                </span>
               </div>
               {metrics.map((m) => (
-                <div key={m.key} className="bg-[#0b0f14] px-3 py-2.5 text-[11px] font-semibold text-white tabular-nums text-right">
+                <div
+                  key={m.key}
+                  className="bg-[#0b0f14] px-3 py-2.5 text-[11px] font-semibold text-white tabular-nums text-right"
+                >
                   {m.format(m.getValue(c))}
                 </div>
               ))}
@@ -656,9 +628,15 @@ function ComplexCard({ complex, onEdit }: ComplexCardProps) {
             )}
 
             {/* 학군 */}
-            {c.schoolScore && (
+            {c.schoolScore && parseSchools(c.schoolScore).length > 0 && (
               <DetailSection icon="🎓" title="학군">
-                <DetailRow label="중학교 학업성취도" value={c.schoolScore} />
+                {parseSchools(c.schoolScore).map((s, si) => (
+                  <DetailRow
+                    key={si}
+                    label={s.name || `학교 ${si + 1}`}
+                    value={s.score > 0 ? `${s.score}%` : "-"}
+                  />
+                ))}
               </DetailSection>
             )}
 
@@ -870,7 +848,7 @@ const SAMPLE_COMPLEX: Complex = {
   subwayLine: "3호선 대치역",
   workplace1: "",
   workplace2: "",
-  schoolScore: "A",
+  schoolScore: JSON.stringify([{ name: "개포중", score: 92 }]),
   hazard: "없음",
   amenities: "대형마트, 공원",
   isNewBuild: "O",

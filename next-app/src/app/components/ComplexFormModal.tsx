@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Complex } from "@/data/complexes";
+import { Complex, SchoolEntry, parseSchools } from "@/data/complexes";
 import TwEmoji from "./ui/TwEmoji";
 import { useAlert, useConfirm } from "./ui/ConfirmModal";
 import { useLoading } from "./ui/LoadingOverlay";
@@ -100,7 +100,7 @@ export default function ComplexFormModal({
   const [subwayLine, setSubwayLine] = useState("");
   const [workplace1, setWorkplace1] = useState("");
   const [workplace2, setWorkplace2] = useState("");
-  const [schoolScore, setSchoolScore] = useState("");
+  const [schools, setSchools] = useState<SchoolEntry[]>([{ name: "", score: 0 }]);
   const [hazard, setHazard] = useState("");
   const [amenities, setAmenities] = useState("");
   const [isNewBuild, setIsNewBuild] = useState("");
@@ -116,7 +116,6 @@ export default function ComplexFormModal({
   const [addrQuery, setAddrQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [lawdCd, setLawdCd] = useState("");
   const [fetchingPrices, setFetchingPrices] = useState(false);
 
   // 면적별 가격 데이터 (실거래가 API 결과)
@@ -132,6 +131,10 @@ export default function ComplexFormModal({
   const [areaPrices, setAreaPrices] = useState<AreaPrice[]>([]);
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [areaUnit, setAreaUnit] = useState<"sqm" | "pyeong">("sqm");
+  // 평단가 계산 시 빈 필드 하이라이트
+  const [pyeongCalcError, setPyeongCalcError] = useState<"area" | "price" | null>(null);
+  // 매칭 실패 시 사용자가 선택할 수 있는 아파트 이름 목록
+  const [aptSuggestions, setAptSuggestions] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
   const showAlert = useAlert();
   const showConfirm = useConfirm();
@@ -157,7 +160,8 @@ export default function ComplexFormModal({
       setSubwayLine(complex.subwayLine);
       setWorkplace1(complex.workplace1);
       setWorkplace2(complex.workplace2);
-      setSchoolScore(complex.schoolScore);
+      const parsed = parseSchools(complex.schoolScore);
+      setSchools(parsed.length > 0 ? parsed : [{ name: "", score: 0 }]);
       setHazard(complex.hazard);
       setAmenities(complex.amenities);
       setIsNewBuild(complex.isNewBuild);
@@ -214,7 +218,6 @@ export default function ComplexFormModal({
       setLat(data.lat);
       setLng(data.lng);
       setFullAddress(data.roadAddress || q);
-      if (data.lawdCd) setLawdCd(data.lawdCd);
       // 시/구/동 자동 채움 (비어있을 때만)
       if (data.city && !city) setCity(data.city);
       if (data.district && !district) setDistrict(data.district);
@@ -254,6 +257,9 @@ export default function ComplexFormModal({
       if (data.matchedName && !name) setName(data.matchedName);
       if (data.areas && data.areas.length > 0) {
         setAreaPrices(data.areas);
+        setAptSuggestions([]);
+      } else if (data.suggestions && data.suggestions.length > 0) {
+        setAptSuggestions(data.suggestions);
       }
     } catch {
       // silent
@@ -272,6 +278,12 @@ export default function ComplexFormModal({
     if (ap.lowPrice > 0) setLowPrice(ap.lowPrice);
     // 매매가도 직전 실거래가로 설정 (사용자가 수정 가능)
     if (ap.lastTradePrice > 0 && !salePrice) setSalePrice(ap.lastTradePrice);
+    // 평단가 자동 계산: 매매가 ÷ 평수 (전용면적 ÷ 3.306)
+    const price = ap.lastTradePrice || salePrice;
+    const pyeong = ap.area / 3.306;
+    if (price > 0 && pyeong > 0) {
+      setPyeongPrice(Math.round(price / pyeong));
+    }
   };
 
   const handleSave = async () => {
@@ -280,6 +292,7 @@ export default function ComplexFormModal({
       return;
     }
     setSaving(true);
+    loadingCtx.show();
 
     const data: Omit<Complex, "id"> = {
       name: name.trim(),
@@ -298,7 +311,7 @@ export default function ComplexFormModal({
       subwayLine: subwayLine.trim(),
       workplace1: workplace1.trim(),
       workplace2: workplace2.trim(),
-      schoolScore: schoolScore.trim(),
+      schoolScore: JSON.stringify(schools.filter((s) => s.name || s.score > 0)),
       hazard: hazard.trim(),
       amenities: amenities.trim(),
       isNewBuild: isNewBuild.trim(),
@@ -312,15 +325,29 @@ export default function ComplexFormModal({
     const url = isEdit ? `/api/complexes/${complex!.id}` : "/api/complexes";
     const method = isEdit ? "PUT" : "POST";
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    setSaving(false);
-    onSaved();
-    onClose();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        await showAlert(d.error || "저장에 실패했습니다.");
+        return;
+      }
+      onSaved();
+      await showAlert(isEdit ? "수정 완료되었습니다." : "등록 완료되었습니다.", {
+        title: "완료",
+        icon: "✅",
+      });
+      onClose();
+    } catch {
+      await showAlert("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+      loadingCtx.hide();
+    }
   };
 
   return (
@@ -394,7 +421,6 @@ export default function ComplexFormModal({
                         setAddrQuery("");
                         setLat(undefined);
                         setLng(undefined);
-                        setLawdCd("");
                         setAreaPrices([]);
                         setSelectedArea(null);
                       }}
@@ -428,6 +454,15 @@ export default function ComplexFormModal({
                           <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                         </svg>
                         실거래가 조회 중...
+                      </div>
+                    )}
+                    {/* 매칭 실패 안내 */}
+                    {aptSuggestions.length > 0 && areaPrices.length === 0 && (
+                      <div className="flex items-start gap-2 text-[11px] text-white/50 bg-white/[0.03] border border-white/10 px-3 py-2.5 rounded-lg">
+                        <TwEmoji emoji="📝" size={13} className="flex-shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">
+                          해당 주소의 실거래 데이터를 찾지 못했어요. 아래 가격정보를 직접 입력해주세요.
+                        </span>
                       </div>
                     )}
                     {/* 면적 선택 버튼 */}
@@ -521,13 +556,50 @@ export default function ComplexFormModal({
                   />
                 </div>
                 <div>
-                  <label className={label}>공급/전용면적</label>
-                  <input
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                    placeholder="97 / 78"
-                    className={input}
-                  />
+                  <label className={label + (pyeongCalcError === "area" ? " !text-red-400" : "")}>
+                    공급/전용면적 {pyeongCalcError === "area" && <span className="text-red-400 ml-1">← 입력 필요</span>}
+                  </label>
+                  <div className="flex gap-2">
+                    <div className={"relative flex-1 " + (pyeongCalcError === "area" ? "animate-pulse" : "")}>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        value={(() => {
+                          const num = parseFloat(area) || 0;
+                          if (!num) return "";
+                          return areaUnit === "pyeong"
+                            ? Math.round(num / 3.306)
+                            : num;
+                        })()}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value) || 0;
+                          // 항상 ㎡ 기준으로 저장
+                          const sqm =
+                            areaUnit === "pyeong"
+                              ? Math.round(v * 3.306)
+                              : v;
+                          setArea(sqm > 0 ? `${sqm}` : "");
+                        }}
+                        placeholder="0"
+                        className={input + " pr-10" + (pyeongCalcError === "area" ? " !border-red-400 !ring-2 !ring-red-400/30" : "")}
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] text-white/40 pointer-events-none">
+                        {areaUnit === "sqm" ? "㎡" : "평"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAreaUnit((u) =>
+                          u === "sqm" ? "pyeong" : "sqm"
+                        )
+                      }
+                      className="h-11 px-3 rounded-lg text-[10px] font-medium text-mint/70 hover:text-mint bg-white/[0.04] border border-white/10 hover:border-mint/30 transition-colors whitespace-nowrap"
+                    >
+                      {areaUnit === "sqm" ? "평으로" : "㎡로"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -547,7 +619,34 @@ export default function ComplexFormModal({
                 </div>
                 <div>
                   <label className={label}>평단가</label>
-                  <PriceInput value={pyeongPrice} onChange={setPyeongPrice} />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <PriceInput value={pyeongPrice} onChange={(v) => { setPyeongPrice(v); setPyeongCalcError(null); }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sqm = parseFloat(area) || 0;
+                        const price = lastTradePrice;
+                        if (sqm <= 0) {
+                          setPyeongCalcError("area");
+                          setTimeout(() => setPyeongCalcError(null), 2000);
+                          return;
+                        }
+                        if (price <= 0) {
+                          setPyeongCalcError("price");
+                          setTimeout(() => setPyeongCalcError(null), 2000);
+                          return;
+                        }
+                        const pyeong = sqm / 3.306;
+                        setPyeongPrice(Math.round(price / pyeong));
+                        setPyeongCalcError(null);
+                      }}
+                      className="h-11 px-3 rounded-lg text-[10px] font-medium text-mint/70 hover:text-mint bg-white/[0.04] border border-white/10 hover:border-mint/30 transition-colors whitespace-nowrap"
+                    >
+                      계산하기
+                    </button>
+                  </div>
                 </div>
               </div>
               <div>
@@ -563,12 +662,16 @@ export default function ComplexFormModal({
                   <label className={label}>전저점</label>
                   <PriceInput value={lowPrice} onChange={setLowPrice} />
                 </div>
-                <div>
-                  <label className={label}>직전 실거래가</label>
-                  <PriceInput
-                    value={lastTradePrice}
-                    onChange={setLastTradePrice}
-                  />
+                <div className={pyeongCalcError === "price" ? "animate-pulse" : ""}>
+                  <label className={label + (pyeongCalcError === "price" ? " !text-red-400" : "")}>
+                    직전 실거래가 {pyeongCalcError === "price" && <span className="text-red-400 ml-1">← 입력 필요</span>}
+                  </label>
+                  <div className={pyeongCalcError === "price" ? "[&>div>input]:!border-red-400 [&>div>input]:!ring-2 [&>div>input]:!ring-red-400/30" : ""}>
+                    <PriceInput
+                      value={lastTradePrice}
+                      onChange={(v) => { setLastTradePrice(v); setPyeongCalcError(null); }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -622,13 +725,70 @@ export default function ComplexFormModal({
                 </div>
               </div>
               <div>
-                <label className={label}>학군 (근처 중학교 학업성취도)</label>
-                <input
-                  value={schoolScore}
-                  onChange={(e) => setSchoolScore(e.target.value)}
-                  placeholder="계남중 84%"
-                  className={input}
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-medium text-white/50 uppercase tracking-wider">
+                    학군 (근처 중학교 학업성취도)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSchools((prev) => [...prev, { name: "", score: 0 }])
+                    }
+                    className="text-[10px] text-mint/70 hover:text-mint transition-colors"
+                  >
+                    + 학교 추가
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {schools.map((s, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input
+                        value={s.name}
+                        onChange={(e) => {
+                          const next = [...schools];
+                          next[i] = { ...next[i], name: e.target.value };
+                          setSchools(next);
+                        }}
+                        placeholder="학교명"
+                        className={input + " flex-1"}
+                      />
+                      <div className="relative w-24 flex-shrink-0">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={100}
+                          value={s.score || ""}
+                          onChange={(e) => {
+                            const next = [...schools];
+                            next[i] = {
+                              ...next[i],
+                              score: Math.min(100, parseInt(e.target.value, 10) || 0),
+                            };
+                            setSchools(next);
+                          }}
+                          placeholder="0"
+                          className={input + " pr-7 text-right"}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-white/40 pointer-events-none">
+                          %
+                        </span>
+                      </div>
+                      {schools.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSchools((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          aria-label="학교 삭제"
+                          className="h-11 w-11 flex items-center justify-center rounded-lg text-white/30 hover:text-red-300 hover:bg-red-500/10 border border-white/10 transition-colors flex-shrink-0"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5"/></svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

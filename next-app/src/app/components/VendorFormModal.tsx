@@ -9,7 +9,8 @@ import {
   VendorCategory,
 } from "@/data/vendors";
 import TwEmoji from "./ui/TwEmoji";
-import { useConfirm } from "./ui/ConfirmModal";
+import { useAlert, useConfirm } from "./ui/ConfirmModal";
+import { useLoading } from "./ui/LoadingOverlay";
 
 interface Props {
   category: VendorCategory;
@@ -72,6 +73,8 @@ export default function VendorFormModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const showConfirm = useConfirm();
+  const showAlert = useAlert();
+  const loadingCtx = useLoading();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,6 +93,7 @@ export default function VendorFormModal({
       return;
     }
     setSaving(true);
+    loadingCtx.show();
     setError(null);
 
     const payload: Record<string, unknown> = {
@@ -118,11 +122,13 @@ export default function VendorFormModal({
         return;
       }
       onSaved();
+      await showAlert(isEdit ? "수정 완료되었습니다." : "등록 완료되었습니다.", { title: "완료", icon: "✅" });
       onClose();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
     } finally {
       setSaving(false);
+      loadingCtx.hide();
     }
   };
 

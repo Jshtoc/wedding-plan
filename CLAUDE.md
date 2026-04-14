@@ -125,23 +125,23 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 
 ---
 
-## 현재 구현 상태 (2026-04-13 기준)
+## 현재 구현 상태 (2026-04-14 기준)
 
 ### 인증 & 기반
-- **인증**: 2인 고정 계정 (`wed1`/`wed2`), bcrypt 해시, HMAC 쿠키 세션, Edge proxy 전역 보호
+- **인증**: multi-tenant (group_id 기반 데이터 격리), 고정 계정 (wed1/wed2 = couple-1, jiyun1234 = couple-2), bcrypt 해시, HMAC 쿠키 세션 (groupId 포함), Edge proxy가 `x-group-id` 헤더 주입
 - **로그인 페이지**: Aceternity 스타일 오로라 배경 + 투명 글라스 카드 (민트/그린 팔레트)
 - **WWP 브랜드 자산**: favicon, apple-icon, 로고 SVG, OpenGraph/Twitter 카드
 - **Pretendard 폰트** (React 19 link hoisting)
 - **에러 바운더리**: `app/error.tsx` — 런타임 에러 시 다크 테마 에러 화면 + "다시 시도" 버튼
+- **ConfirmModal** (`useAlert` / `useConfirm`): 네이티브 alert/confirm 대체, 다크 테마 모달
+- **LoadingOverlay** (`useLoading`): 전역 스피너 + dimmed backdrop, API 대기 시 사용
 - **`.env.local`의 `$` escape 규칙** (backend skill convention에 문서화)
 
 ### 대시보드 Shell
-- 좌측 사이드바 (데스크톱) / 햄버거 드로어 (모바일)
-- 예식 그룹: 웨딩홀 / 스튜디오 / 드레스 / 메이크업
-- 부동산 그룹: 자산 / 매물 / 임장 동선
-- 결혼 예산 + custom 예산 항목 동적 탭 (My Items)
-- **body scroll lock** (모바일 드로어 열림 시)
-- **ESC 키로 드로어 닫기**
+- **데스크톱**: 좌측 사이드바 (예식 그룹 / 부동산 그룹 / 예산 / My Items)
+- **모바일**: 하단 BottomNav (5탭: 홈 / 예식 / WWP로고 / 부동산 / 메뉴) + 메뉴 시트 (전체 섹션 그리드)
+- **body scroll lock** + **ESC 키로 드로어 닫기**
+- **scrollbar-gutter: stable** (스크롤바 출현 시 레이아웃 밀림 방지)
 
 ### Overview 섹션
 - **StatusCards**: 웨딩홀/스튜디오/드레스/메이크업/예정 일정 실 카운트 + accent 표시
@@ -174,11 +174,20 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **EventFormModal**: 타입 칩, 삭제 버튼
 - **CRUD 진입점**: "+ 일정 추가" 버튼 + 카드/캘린더 날짜 클릭
 
-### 신혼집 / 매물 (complexes) — 2026-04-12 추가
-- **Supabase `complexes` 테이블**: 단지정보 (name/city/district/dong/yearUnits/area) + 가격정보 (salePrice/jeonsePrice/peakPrice/lowPrice/lastTradePrice) + 입지분석 (commuteTime/subwayLine/workplace1/2/schoolScore/hazard/amenities/isNewBuild/isCandidate) + note
-- **ComplexFormModal**: 단지정보/가격정보/입지분석 섹션 분리, 후보 체크박스
-- **HousingSection**: 카드 그리드, 정렬 (매매가/갭/이름), 전세비율/갭/고점 대비 하락 표시
-- **유틸리티 함수**: `jeonseRatio()`, `gap()`, `dropFromPeak()`
+### 신혼집 / 매물 (complexes)
+- **Supabase `complexes` 테이블**: 단지정보 + 가격정보 (salePrice/pyeongPrice/jeonsePrice/peakPrice/lowPrice/lastTradePrice) + 입지분석 + 좌표 (lat/lng/address) + schoolScore (JSON 배열)
+- **ComplexFormModal**:
+  - **주소 검색** → 네이버 Geocoding → 좌표 + 시/구/동 자동 채움 → 검색 후 input 잠금 + "변경" 버튼
+  - **실거래가 자동 조회** (data.go.kr API): 주소 검색 시 법정동코드 매핑 → 국토부 매매/전월세 API 호출 → **전용면적별 가격** 반환
+  - **면적 버튼**: 면적 클릭 → 직전 실거래가/전세가/전고점/전저점 + 평단가 자동 채움, ㎡↔평 단위 토글
+  - **평단가 계산하기** 버튼: 전용면적 또는 직전 실거래가 미입력 시 빨간 테두리 하이라이트
+  - **학군**: 학교명 + 성취율(%) 개별 입력, "+" 버튼으로 여러 학교 추가
+  - **저장 시 로딩 스피너 + 완료 안내 팝업** (모든 모달 공통)
+- **HousingSection**: 카드 그리드 + **드롭다운 정렬** (우측), **리스트/비교 토글** (좌측)
+- **매물 비교**: 레이더(방사형) 차트 — 5축 (매매가/실거래가/전고점/평단가/학업성취율), 매물별 다색 반투명 폴리곤 + 하단 데이터 테이블
+- **집구하기 꿀팁**: 아코디언 가이드 (체크리스트 20 + 합격 기준 + 계약 전 필수 확인)
+- **유틸리티**: `jeonseRatio()`, `gap()`, `dropFromPeak()`, `parseSchools()`, `maxSchoolScore()`
+- **법정동코드 매핑**: `src/data/lawdCodes.ts` (수도권 + 6대 광역시 ~100개, 정적)
 
 ### 자산 (assets) — 2026-04-12 추가
 - **Supabase `assets` 테이블**: role (groom/bride UNIQUE) + 자산 (cash/stocks/savings/otherAssets) + 소득 (monthlyIncome/annualIncome) + 대출 심사 (age/isHomeless/homelessYears/isFirstHome/existingLoans/creditScore/netAssets) + note
@@ -197,12 +206,20 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - 브랜드 민트(#00FFE1) 일관 강조
 - **Legacy warm 테마 CSS 전량 삭제** (2026-04-13): `globals.css` 700줄+ 제거 — `.modal-*`, `.form-*`, `.btn-*`, `.card-*`, `.tl-*`, `.copy-btn`, `.route-*`, `.filter-*`, `.badge`, `.info-*`, `.fab`, `:root` warm vars 등
 
-### 임장 동선 (housing-routes) — 2026-04-13 구현
-- **네이버 지도 API**: Geocoding (주소→좌표) + Directions 5 (경로 계산) — `/api/naver/geocode`, `/api/naver/directions` 서버 프록시
-- **네이버 지도 SDK (v3)**: 클라이언트 `<Script>` 동적 로드, 지도 위 경로 폴리라인 + 번호 마커
-- **HousingRouteSection**: 매물 체크박스 선택 → "경로 계산" → 지도 시각화 + 구간별 거리/시간 타임라인
-- **API Keys**: `.env.local` — `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` + `NAVER_MAP_CLIENT_SECRET`
-- **타입 선언**: `src/types/navermaps.d.ts` (naver.maps SDK 최소 타입)
+### 임장 동선 (housing-routes)
+- **네이버 지도 API**: Geocoding (주소→좌표, 법정동코드 포함) + Directions 5 (경로 계산) — `maps.apigw.ntruss.com` 엔드포인트
+- **네이버 지도 SDK (v3)**: `ncpKeyId` 파라미터, 지도 위 경로 폴리라인 + 색상 마커 (출발:초록 / 매물:민트 / 도착:빨강)
+- **출발지 / 도착지 입력**: 주소 검색 → 좌표, "출발지와 동일" 체크박스
+- **경로 계산 전 마커 표시**: 저장된 lat/lng로 즉시 지도에 핀 (API 호출 없이)
+- **타임라인**: 출발 → 매물1 → 매물2 → ... → 도착, 구간별 거리/시간, **주소 복사 버튼**
+- **API Keys**: `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` + `NAVER_MAP_CLIENT_SECRET`
+
+### 실거래가 API (data.go.kr)
+- **국토부 매매 + 전월세 실거래가**: `/api/realestate` 서버 프록시
+- 법정동코드 자동 매핑 (`lawdCodes.ts`) → 최근 12개월 데이터 조회
+- 아파트명 **토큰 기반 fuzzy 매칭** (예: "방화3단지" → "방화청솔3단지아파트" 매칭)
+- 면적별 그룹핑 → 전용면적 버튼으로 가격 선택
+- **API Key**: `DATA_GO_KR_SERVICE_KEY`
 
 ### Legacy — 전부 정리 완료 (2026-04-13)
 - `HallCard.tsx` — 삭제됨 (2026-04-10)
@@ -256,6 +273,14 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 | 9 | `supabase/vendors.sql` | `studios`/`dresses`/`makeups` 3개 테이블 + realtime publication 등록 |
 | 10 | `supabase/complexes.sql` | `complexes` 테이블 (신혼집 매물 비교) |
 | 11 | `supabase/assets.sql` | `assets` 테이블 (신랑/신부 자산, role UNIQUE + 초기 2행 seed) |
+| 12 | `supabase/multi_tenant.sql` | 8개 테이블에 `group_id` 추가 + budgets/assets 복합 unique 제약 |
+| 13 | `supabase/complexes_coords.sql` | complexes에 `lat`/`lng`/`address` 컬럼 추가 |
+
+### ESLint 설정
+- **ESLint 9** flat config (`eslint.config.mjs`) — `next/core-web-vitals` + `next/typescript` 직접 플러그인 구성
+- `.eslintrc.json` 삭제 (ESLint 9 비호환)
+- `@next/next/no-img-element` off, `react/forbid-dom-props` off
+- 현재 상태: **0 errors, 0 warnings**
 
 새 마이그레이션 추가 시 번호순으로 계속 이어가고, 파일 상단 주석에 dependency를 명시할 것.
 
@@ -269,3 +294,5 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **Supabase Presence API**: 상대방이 온라인인지 표시 ("wed2가 보고 있음")
 - **예산 spent 필드**: 예산 대비 실제 지출 트래킹
 - **로그인 세션 만료 시 자동 로그아웃 UI**: 현재는 새 요청 시 401 → 수동 재로그인
+- **회원가입 + DB 기반 인증 전환**: 현재 env 고정 계정 → Supabase users 테이블 + 자체 회원가입
+- **법정동코드 매핑 확장**: 현재 수도권+광역시 ~100개 → 전국 커버리지

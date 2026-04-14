@@ -39,6 +39,36 @@ export interface Complex {
   address?: string;       // 도로명주소 (검색 결과)
 }
 
+// ── School entries (stored as JSON string in schoolScore column) ──
+
+export interface SchoolEntry {
+  name: string;
+  score: number; // 학업성취율 %
+}
+
+/** Parse schoolScore JSON string → SchoolEntry[].
+ *  Handles legacy plain-text values like "A" or "85%". */
+export function parseSchools(raw: string): SchoolEntry[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) return arr;
+  } catch {
+    // not JSON — legacy format
+  }
+  const num = parseFloat(raw.replace(/[^0-9.]/g, ""));
+  if (num > 0) return [{ name: "", score: num }];
+  if (raw.trim()) return [{ name: raw.trim(), score: 0 }];
+  return [];
+}
+
+/** Highest school score for comparison chart. */
+export function maxSchoolScore(c: Complex): number {
+  const schools = parseSchools(c.schoolScore);
+  if (schools.length === 0) return 0;
+  return Math.max(...schools.map((s) => s.score));
+}
+
 /** 전세가율 (%) — 전세가/매매가 × 100 */
 export function jeonseRatio(c: Complex): number | null {
   if (!c.salePrice || c.salePrice <= 0 || !c.jeonsePrice) return null;

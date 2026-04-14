@@ -446,7 +446,7 @@ export default function BudgetSection({ initial, onSaved }: Props) {
                   "h-full rounded-full transition-all duration-300 " +
                   (remaining >= 0 ? "bg-mint" : "bg-red-400")
                 }
-                // eslint-disable-next-line react/forbid-dom-props
+                 
                 style={{
                   width: `${Math.min(100, (total / totalTarget) * 100)}%`,
                 }}
@@ -637,7 +637,7 @@ export default function BudgetSection({ initial, onSaved }: Props) {
                         "group relative w-10 h-10 rounded-xl flex items-center justify-center border bg-[var(--chip-bg)] border-[var(--chip-br)] hover:border-white/30 transition-colors " +
                         (pickerOpen ? "ring-2 ring-mint/40" : "")
                       }
-                      // eslint-disable-next-line react/forbid-dom-props
+                       
                       style={
                         {
                           ["--chip-bg" as string]: `${customColor}26`,
@@ -723,7 +723,7 @@ export default function BudgetSection({ initial, onSaved }: Props) {
                         "h-full rounded-full transition-all duration-300 " +
                         (fixed ? "bg-mint" : "bg-[var(--bar)]")
                       }
-                      // eslint-disable-next-line react/forbid-dom-props
+                       
                       style={
                         fixed
                           ? { width: `${Math.min(100, pct)}%` }

@@ -10,6 +10,7 @@ import {
 import { BudgetItem } from "@/data/budgets";
 import TwEmoji from "./ui/TwEmoji";
 import { useAlert } from "./ui/ConfirmModal";
+import { useLoading } from "./ui/LoadingOverlay";
 
 interface Props {
   hall?: WeddingHall | null;
@@ -73,6 +74,7 @@ export default function HallFormModal({
   const [showGradeGuide, setShowGradeGuide] = useState(false);
 
   const showAlert = useAlert();
+  const loadingCtx = useLoading();
 
   // Look up the hall-category budget once per render. This drives the
   // traffic-light dot next to the price input.
@@ -141,6 +143,7 @@ export default function HallFormModal({
       return;
     }
     setSaving(true);
+    loadingCtx.show();
 
     const data: Omit<WeddingHall, "id"> = {
       name: name.trim(),
@@ -155,15 +158,21 @@ export default function HallFormModal({
     const url = isEdit ? `/api/halls/${hall!.id}` : "/api/halls";
     const method = isEdit ? "PUT" : "POST";
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    setSaving(false);
-    onSaved();
-    onClose();
+    try {
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      onSaved();
+      await showAlert(isEdit ? "수정 완료되었습니다." : "등록 완료되었습니다.", { title: "완료", icon: "✅" });
+      onClose();
+    } catch {
+      await showAlert("네트워크 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+      loadingCtx.hide();
+    }
   };
 
   return (

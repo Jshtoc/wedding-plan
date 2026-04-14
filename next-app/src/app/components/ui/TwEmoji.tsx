@@ -23,7 +23,7 @@ export default function TwEmoji({ emoji, size = 18, className, alt }: Props) {
   const code = toCodePoint(emoji);
   const src = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`;
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+     
     <img
       src={src}
       alt={alt ?? emoji}

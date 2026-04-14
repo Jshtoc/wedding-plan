@@ -119,7 +119,7 @@ export default function BudgetDonutChart({ items }: Props) {
           <div key={s.key} className="flex items-center gap-3">
             <div
               className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[var(--dot)]"
-              // eslint-disable-next-line react/forbid-dom-props
+               
               style={{ ["--dot" as string]: s.meta.color } as React.CSSProperties}
               aria-hidden
             />

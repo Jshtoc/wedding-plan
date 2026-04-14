@@ -69,7 +69,7 @@ export default function HousingRouteSection({ complexes }: Props) {
     });
     // Clear stale route when selection changes
     setRouteResult(null);
-    setGeoResults([]);
+
   };
 
   const selectedComplexes = useMemo(
@@ -145,7 +145,6 @@ export default function HousingRouteSection({ complexes }: Props) {
   const [computing, setComputing] = useState(false);
   const loading = useLoading();
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [geoResults, setGeoResults] = useState<GeoResult[]>([]);
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
 
   // ── Map refs ─────────────────────────────────
@@ -277,7 +276,7 @@ export default function HousingRouteSection({ complexes }: Props) {
     loading.show();
     setRouteError(null);
     setRouteResult(null);
-    setGeoResults([]);
+
 
     try {
       // 1. Resolve coordinates for selected complexes
@@ -302,7 +301,6 @@ export default function HousingRouteSection({ complexes }: Props) {
           geos.push({ id: c.id, lat: data.lat, lng: data.lng });
         }
       }
-      setGeoResults(geos);
 
       // 2. Build waypoints: [start?] + complexes + [end?]
       const waypoints: { lat: number; lng: number }[] = [];

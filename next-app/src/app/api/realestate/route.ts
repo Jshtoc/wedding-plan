@@ -147,29 +147,37 @@ export async function POST(req: NextRequest) {
       uniqueNames.slice(0, 10)
     );
 
-    // Filter by apartment name (fuzzy — bidirectional contains match)
+    // Filter by apartment name — multi-strategy fuzzy matching.
+    // API names often differ from Naver Geocoding names, e.g.:
+    //   Naver: "방화3단지 아파트"  →  API: "방화청솔3단지아파트"
+    // Strategy: extract number tokens ("3단지") and base name tokens
+    // ("방화") and check if the API name contains ALL of them.
     if (aptName) {
-      const keyword = aptName.replace(/\s/g, "").toLowerCase();
+      const keyword = aptName
+        .replace(/\s/g, "")
+        .replace(/아파트$/i, "")
+        .toLowerCase();
+
       const matchName = (name: string) => {
-        const n = name.replace(/\s/g, "").toLowerCase();
-        // Either direction: keyword in name OR name in keyword
-        return n.includes(keyword) || keyword.includes(n);
-      };
-      // Also try partial keywords (split by common patterns)
-      const partials = keyword
-        .split(/[e이이편한세상]/)
-        .filter((s) => s.length >= 2);
-      const matchPartial = (name: string) => {
-        const n = name.replace(/\s/g, "").toLowerCase();
-        return partials.some((p) => n.includes(p));
+        const n = name.replace(/\s/g, "").replace(/아파트$/i, "").toLowerCase();
+        // Bidirectional contains
+        if (n.includes(keyword) || keyword.includes(n)) return true;
+        // Token-based: extract meaningful chunks (numbers + surrounding text)
+        // e.g. "방화3단지" → tokens ["방화", "3단지"]
+        const tokens = keyword.match(/[가-힣]+|\d+단지|\d+차|\d+/g) || [];
+        if (tokens.length >= 2) {
+          // All tokens must appear in the API name
+          return tokens.every((t) => n.includes(t));
+        }
+        // Single token fallback — at least the longest token must match
+        if (tokens.length === 1 && tokens[0].length >= 2) {
+          return n.includes(tokens[0]);
+        }
+        return false;
       };
 
-      allTrades = allTrades.filter(
-        (t) => matchName(t.aptNm) || matchPartial(t.aptNm)
-      );
-      allRents = allRents.filter(
-        (t) => matchName(t.aptNm) || matchPartial(t.aptNm)
-      );
+      allTrades = allTrades.filter((t) => matchName(t.aptNm));
+      allRents = allRents.filter((t) => matchName(t.aptNm));
 
       console.log(
         `[realestate] After name filter "${aptName}": trades=${allTrades.length} rents=${allRents.length}`
@@ -212,12 +220,16 @@ export async function POST(req: NextRequest) {
       for (const xml of extraXmls) {
         let items = extractItems<TradeItem>(xml, tradeTags);
         if (aptName) {
-          const keyword = aptName.replace(/\s/g, "").toLowerCase();
-          const matchN = (name: string) => {
-            const n = name.replace(/\s/g, "").toLowerCase();
-            return n.includes(keyword) || keyword.includes(n);
-          };
-          items = items.filter((t) => matchN(t.aptNm));
+          // Reuse the same matchName logic from above
+          const kw = aptName.replace(/\s/g, "").replace(/아파트$/i, "").toLowerCase();
+          const tokens = kw.match(/[가-힣]+|\d+단지|\d+차|\d+/g) || [];
+          items = items.filter((t) => {
+            const n = t.aptNm.replace(/\s/g, "").replace(/아파트$/i, "").toLowerCase();
+            if (n.includes(kw) || kw.includes(n)) return true;
+            if (tokens.length >= 2) return tokens.every((tk) => n.includes(tk));
+            if (tokens.length === 1 && tokens[0].length >= 2) return n.includes(tokens[0]);
+            return false;
+          });
         }
         extraTrades.push(...items);
       }
@@ -274,9 +286,15 @@ export async function POST(req: NextRequest) {
       areaSummaries.map((s) => `${s.area}㎡(${s.tradeCount}건)`)
     );
 
+    // If no results matched, return the full apartment name list
+    // so the user can pick manually.
+    const suggestions =
+      areaSummaries.length === 0 ? uniqueNames.slice(0, 30) : [];
+
     return NextResponse.json({
       matchedName,
       areas: areaSummaries,
+      suggestions,
     });
   } catch (e: unknown) {
     console.error("POST /api/realestate error:", e);

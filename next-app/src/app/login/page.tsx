@@ -48,7 +48,7 @@ function LoginForm() {
       >
         {/* Brand */}
         <div className="text-center mb-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img
             src="/wwp-symbol.svg"
             alt="우리들의 웨딩 플랜"

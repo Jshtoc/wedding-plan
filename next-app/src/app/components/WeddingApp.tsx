@@ -597,7 +597,7 @@ export default function WeddingApp() {
         {/* Footer: logo + logout */}
         <div className="border-t border-white/10 p-4 space-y-3">
           <div className="flex items-center gap-3 px-2 py-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            { }
             <img
               src="/wwp-symbol.svg"
               alt="WWP"
@@ -1193,7 +1193,7 @@ function MobileBottomNav({
           className="absolute -top-5 left-1/2 -translate-x-1/2 z-10 w-[60px] h-[60px] rounded-full bg-[#020806] p-1 flex items-center justify-center"
         >
           <div className="w-full h-full rounded-full bg-mint/15 border-2 border-mint flex items-center justify-center sample-glow">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            { }
             <img
               src="/wwp-symbol.svg"
               alt="WWP"
