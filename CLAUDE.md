@@ -175,7 +175,9 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **CRUD 진입점**: "+ 일정 추가" 버튼 + 카드/캘린더 날짜 클릭
 
 ### 신혼집 / 매물 (complexes)
-- **Supabase `complexes` 테이블**: 단지정보 + 가격정보 (salePrice/pyeongPrice/jeonsePrice/peakPrice/lowPrice/lastTradePrice) + 입지분석 + 좌표 (lat/lng/address) + schoolScore (JSON 배열)
+- **Supabase `complexes` 테이블**: 단지정보 + 가격정보 (salePrice/pyeongPrice/jeonsePrice/peakPrice/lowPrice/lastTradePrice) + 입지분석 + 좌표 (lat/lng/address) + schoolScore (JSON 배열) + **commute1/2_minutes** (자동 계산 출퇴근 분)
+- **🔗 네이버부동산 URL 자동 채움**: `/api/complexes/parse-naver` — 단지 URL 붙여넣으면 내부 API 호출해 name/city/district/dong/yearUnits/lat/lng/호가 자동 입력. naver.me 단축 URL도 지원 (HEAD redirect 따라감). 빈 필드만 덮어쓰는 정책
+- **🚗🚊 출퇴근 자동 계산** (다중 직장 · 차량+대중교통): 신랑/신부 각각 여러 개 직장 등록 (`assets.workplaces` JSONB). "자동 계산" 클릭 시 모든 (role × workplace) 조합에 대해 **Naver Directions (차량) + TMap Transit API (대중교통)** 을 `Promise.all`로 병렬 호출 → `complexes.commutes` JSONB에 `{role, label, lat, lng, driveMinutes, transitMinutes}[]` 형태로 캐시. 매물 카드에 "신랑 · 본사 · 차로 28분 · 대중 42분" 형태로 나열. 수동 override 지원 + 네이버지도 대중교통 "확인 ↗" 링크로 검증
 - **ComplexFormModal**:
   - **주소 검색** → 네이버 Geocoding → 좌표 + 시/구/동 자동 채움 → 검색 후 input 잠금 + "변경" 버튼
   - **실거래가 자동 조회** (data.go.kr API): 주소 검색 시 법정동코드 매핑 → 국토부 매매/전월세 API 호출 → **전용면적별 가격** 반환
@@ -190,7 +192,7 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **법정동코드 매핑**: `src/data/lawdCodes.ts` (수도권 + 6대 광역시 ~100개, 정적)
 
 ### 자산 (assets) — 2026-04-12 추가
-- **Supabase `assets` 테이블**: role (groom/bride UNIQUE) + 자산 (cash/stocks/savings/otherAssets) + 소득 (monthlyIncome/annualIncome) + 대출 심사 (age/isHomeless/homelessYears/isFirstHome/existingLoans/creditScore/netAssets) + note
+- **Supabase `assets` 테이블**: role (groom/bride UNIQUE) + 자산 (cash/stocks/savings/otherAssets) + 소득 (monthlyIncome/annualIncome) + 대출 심사 (age/isHomeless/homelessYears/isFirstHome/existingLoans/creditScore/netAssets) + **`workplaces` JSONB 배열** (각 사람별 다중 직장, label/address/lat/lng) + note
 - **AssetsSection**: 신랑/신부 자산 카드 병렬 배치, 요약 카드 (총 자산/연소득/부부합산)
 - **upsert 패턴**: role 기반 2행 고정, `POST /api/assets`로 upsert
 - **formatWon()**: 한국식 금액 포맷 (예: "5억 9,500만", "3,800만")
@@ -198,6 +200,7 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 ### 실시간 동기화
 - **Supabase Realtime 단일 채널** (`wwp-shared`): 8개 테이블 리스너 — halls / budgets / events / studios / dresses / makeups / complexes / assets
 - **BudgetSection 충돌 머지**: category-keyed baseline merge
+- **routes 테이블**: 아직 realtime 구독 미추가 (히스토리는 모달 열 때 fetch)
 
 ### 공통 디자인
 - 전역 다크 글라스 테마 (`bg-[#020806]`, white overlay)
@@ -207,11 +210,24 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **Legacy warm 테마 CSS 전량 삭제** (2026-04-13): `globals.css` 700줄+ 제거 — `.modal-*`, `.form-*`, `.btn-*`, `.card-*`, `.tl-*`, `.copy-btn`, `.route-*`, `.filter-*`, `.badge`, `.info-*`, `.fab`, `:root` warm vars 등
 
 ### 임장 동선 (housing-routes)
-- **네이버 지도 API**: Geocoding (주소→좌표, 법정동코드 포함) + Directions 5 (경로 계산) — `maps.apigw.ntruss.com` 엔드포인트
+- **네이버 지도 API**:
+  - Geocoding (주소→좌표, 법정동코드 포함) — `/api/naver/geocode` 리스트 반환
+  - Reverse Geocoding — `/api/naver/reverse-geocode` (현재 위치 → 주소)
+  - Directions 5 — `/api/naver/directions`, **leg별 개별 호출 + Promise.all 병렬** (summary.waypoints 누적값 불안정해서 per-leg API로 변경, `option=trafast` 실시간 교통 반영)
 - **네이버 지도 SDK (v3)**: `ncpKeyId` 파라미터, 지도 위 경로 폴리라인 + 색상 마커 (출발:초록 / 매물:민트 / 도착:빨강)
-- **출발지 / 도착지 입력**: 주소 검색 → 좌표, "출발지와 동일" 체크박스
-- **경로 계산 전 마커 표시**: 저장된 lat/lng로 즉시 지도에 핀 (API 호출 없이)
-- **타임라인**: 출발 → 매물1 → 매물2 → ... → 도착, 구간별 거리/시간, **주소 복사 버튼**
+- **주소 입력 통합** — `components/ui/AddressSearch.tsx`:
+  - `AddressSearchInput` + `AddressSearchModal` (React Portal로 body 직접 렌더 — `backdrop-filter` 부모 문제 해결)
+  - `allowCurrentLocation` prop → 📍 현재 위치 버튼 (Geolocation + reverse geocode)
+  - `useRecents` prop → localStorage `wwp.address.recents` (동선 출발/도착만 활성, 매물 등록은 비활성)
+- **매물 순서 관리**:
+  - 선택된 매물은 **@dnd-kit** 드래그로 순서 변경 (PointerSensor + TouchSensor)
+  - **최단 순서** 버튼 — Nearest-neighbor heuristic (Haversine, 클라이언트 O(N²))
+- **시간 기반 타임라인**: 출발 시각 + 매물당 관람 시간 + 중간 식사 시간 입력 → 각 stop의 도착/출발 예상 시각 자동 계산 (순수 클라이언트 계산)
+- **예상 비용**: Naver 응답의 `tollFare` (통행료) + `fuelPrice` (유류비) + `taxiFare` (택시, 참고) 합산 표시
+- **네비 앱 딥링크**: 각 구간마다 네이버지도 / 카카오맵 / 티맵 / 대중교통 버튼 — 모바일 브라우저에서 앱 설치 시 앱 연결
+- **공유 링크**: `?section=housing-routes&route=<base64 JSON>` — `WeddingApp`이 mount 시 `?section=` 파싱해서 탭 자동 이동, HousingRouteSection이 `?route=`로 상태 복원
+- **임장 히스토리**: Supabase `routes` 테이블 (JSONB payload) + `RouteHistoryModal` — 현재 경로 저장 (이름/방문일/메모) 및 과거 저장본 불러오기
+- **NaN/0m 방어**: `formatDistance`/`formatDuration` NaN 체크, `option=trafast` 쿼리로 직접 leg 호출
 - **API Keys**: `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` + `NAVER_MAP_CLIENT_SECRET`
 
 ### 실거래가 API (data.go.kr)
@@ -220,6 +236,12 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - 아파트명 **토큰 기반 fuzzy 매칭** (예: "방화3단지" → "방화청솔3단지아파트" 매칭)
 - 면적별 그룹핑 → 전용면적 버튼으로 가격 선택
 - **API Key**: `DATA_GO_KR_SERVICE_KEY`
+
+### TMap 대중교통 API
+- **`/api/tmap/transit`** — SK TMap 대중교통 경로 프록시 (`apis.openapi.sk.com/transit/routes`)
+- 응답 정규화: `totalDuration` (ms), `totalDistance` (m), `walkTime`, `transferCount`, `fare`
+- 매물 출퇴근 자동 계산에서 Naver Directions (차량)과 병렬 호출
+- **API Key**: `TMAP_APP_KEY` (`.env.local`에 설정)
 
 ### Legacy — 전부 정리 완료 (2026-04-13)
 - `HallCard.tsx` — 삭제됨 (2026-04-10)
@@ -235,9 +257,9 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 - **Project ref**: `veaktwkvuuuhmcxgvdeh`
 - **Region**: `ap-northeast-1` (도쿄 — Supabase에 서울 리전 없음)
 - **URL**: `https://veaktwkvuuuhmcxgvdeh.supabase.co`
-- **테이블 (총 8개)**: `halls`, `budgets`, `events`, `studios`, `dresses`, `makeups`, `complexes`, `assets`
+- **테이블 (총 9개)**: `halls`, `budgets`, `events`, `studios`, `dresses`, `makeups`, `complexes`, `assets`, `routes`
 - **RLS**: 전부 disabled — 액세스는 Next.js proxy에서 쿠키 세션 기반으로 차단
-- **Realtime publication (`supabase_realtime`)**: 위 8개 테이블 전부 포함
+- **Realtime publication (`supabase_realtime`)**: 8개 테이블 포함 (routes 제외 — fetch-on-open이라 불필요)
 
 ### DB 마이그레이션 워크플로 (WebStorm)
 
@@ -275,6 +297,8 @@ Pretendard를 기본 폰트로 사용합니다 (`--font-pretendard`).
 | 11 | `supabase/assets.sql` | `assets` 테이블 (신랑/신부 자산, role UNIQUE + 초기 2행 seed) |
 | 12 | `supabase/multi_tenant.sql` | 8개 테이블에 `group_id` 추가 + budgets/assets 복합 unique 제약 |
 | 13 | `supabase/complexes_coords.sql` | complexes에 `lat`/`lng`/`address` 컬럼 추가 |
+| 14 | `supabase/routes.sql` | `routes` 테이블 (임장 동선 히스토리, JSONB payload + visited_at) |
+| 15 | `supabase/commute.sql` | assets에 `workplaces` JSONB, complexes에 `commutes` JSONB 추가 (다중 직장 지원). 이전 단일-직장 컬럼 있으면 자동 이관 후 드롭 |
 
 ### ESLint 설정
 - **ESLint 9** flat config (`eslint.config.mjs`) — `next/core-web-vitals` + `next/typescript` 직접 플러그인 구성

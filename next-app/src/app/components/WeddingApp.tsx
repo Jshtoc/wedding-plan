@@ -109,7 +109,16 @@ const SIDEBAR_NAV: SidebarEntry[] = [
 ];
 
 export default function WeddingApp() {
-  const [active, setActive] = useState<Section>("overview");
+  // Seed `active` from ?section= so shared links deep-link into a
+  // specific tab (e.g. the 임장 동선 share URL). Everything else stays
+  // in local state — we only read the URL once.
+  const [active, setActive] = useState<Section>(() => {
+    if (typeof window === "undefined") return "overview";
+    const param = new URLSearchParams(window.location.search).get("section");
+    if (!param) return "overview";
+    const match = ALL_SECTIONS.find((s) => s.id === param);
+    return (match?.id as Section) || "overview";
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [halls, setHalls] = useState<WeddingHall[]>([]);
   const [budgets, setBudgets] = useState<BudgetItem[]>(() => withDefaults([]));

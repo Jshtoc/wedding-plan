@@ -1,5 +1,17 @@
 export type AssetRole = "groom" | "bride";
 
+/**
+ * 한 사람에게 귀속되는 직장(또는 자주 가는 장소)의 단위.
+ * 출퇴근 시간 자동 계산에 사용되며, 본사/지점/프리랜서 사무실 등
+ * 여러 개를 등록할 수 있다.
+ */
+export interface Workplace {
+  label: string;    // 표시명 (예: "본사", "여의도 지점")
+  address: string;  // 도로명 또는 지번
+  lat: number;
+  lng: number;
+}
+
 export interface PersonAsset {
   id: number;
   role: AssetRole;
@@ -23,6 +35,9 @@ export interface PersonAsset {
   existingLoans: number;     // 기존 대출 총액, 만원
   creditScore: number;       // 신용점수
   netAssets: number;         // 순자산, 만원
+
+  // 직장 주소들 (출퇴근 시간 자동 계산용). 빈 배열이면 미등록.
+  workplaces: Workplace[];
 
   note: string;
 }
@@ -65,6 +80,7 @@ export function emptyAsset(role: AssetRole): PersonAsset {
     existingLoans: 0,
     creditScore: 0,
     netAssets: 0,
+    workplaces: [],
     note: "",
   };
 }

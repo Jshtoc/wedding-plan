@@ -8,8 +8,9 @@ import {
   VendorCategory,
   VENDOR_CATEGORIES,
 } from "@/data/vendors";
-import { Complex } from "@/data/complexes";
-import { PersonAsset, AssetRole } from "@/data/assets";
+import { Complex, CommuteEntry } from "@/data/complexes";
+import { PersonAsset, AssetRole, Workplace } from "@/data/assets";
+import { RouteHistory, RoutePayload } from "@/data/routes";
 
 // ═══════════════════════════════════════════════════════════════
 // Every read/write function takes a `groupId` parameter so data
@@ -353,6 +354,7 @@ function rowToComplex(row: Record<string, unknown>): Complex {
     lat: (row.lat as number | null) ?? undefined,
     lng: (row.lng as number | null) ?? undefined,
     address: (row.address as string | null) ?? undefined,
+    commutes: Array.isArray(row.commutes) ? (row.commutes as CommuteEntry[]) : [],
   };
 }
 
@@ -383,6 +385,7 @@ function complexToRow(c: Omit<Complex, "id">) {
     lat: c.lat ?? null,
     lng: c.lng ?? null,
     address: c.address ?? null,
+    commutes: c.commutes ?? [],
   };
 }
 
@@ -457,6 +460,7 @@ function rowToAsset(row: Record<string, unknown>): PersonAsset {
     existingLoans: (row.existing_loans as number) || 0,
     creditScore: (row.credit_score as number) || 0,
     netAssets: (row.net_assets as number) || 0,
+    workplaces: Array.isArray(row.workplaces) ? (row.workplaces as Workplace[]) : [],
     note: (row.note as string) || "",
   };
 }
@@ -478,6 +482,7 @@ function assetToRow(a: Omit<PersonAsset, "id">) {
     existing_loans: a.existingLoans,
     credit_score: a.creditScore,
     net_assets: a.netAssets,
+    workplaces: a.workplaces ?? [],
     note: a.note,
     updated_at: new Date().toISOString(),
   };
@@ -507,4 +512,103 @@ export async function upsertAsset(
     .single();
   if (error) throw error;
   return rowToAsset(data);
+}
+
+/* ─────────────── Routes (임장 동선 히스토리) ─────────────── */
+
+function rowToRoute(row: Record<string, unknown>): RouteHistory {
+  return {
+    id: row.id as number,
+    name: (row.name as string) || "",
+    // Supabase DATE columns come back as "YYYY-MM-DD" strings.
+    visitedAt: (row.visited_at as string) || "",
+    payload: (row.payload as RoutePayload) || {
+      start: null,
+      end: null,
+      endSame: false,
+      stops: [],
+      dep: "09:30",
+      view: 30,
+    },
+    note: (row.note as string) || "",
+    createdAt: (row.created_at as string) || "",
+    updatedAt: (row.updated_at as string) || "",
+  };
+}
+
+export async function getRoutes(groupId: string): Promise<RouteHistory[]> {
+  const { data, error } = await supabase
+    .from("routes")
+    .select("*")
+    .eq("group_id", groupId)
+    // Show most-recent visits first, with unvisited (NULL) at the end,
+    // then fall back to creation time.
+    .order("visited_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(rowToRoute);
+}
+
+export async function createRoute(
+  groupId: string,
+  r: {
+    name: string;
+    visitedAt?: string | null;
+    payload: RoutePayload;
+    note?: string;
+  }
+): Promise<RouteHistory> {
+  const { data, error } = await supabase
+    .from("routes")
+    .insert({
+      group_id: groupId,
+      name: r.name,
+      visited_at: r.visitedAt || null,
+      payload: r.payload,
+      note: r.note || "",
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToRoute(data);
+}
+
+export async function updateRoute(
+  groupId: string,
+  id: number,
+  r: {
+    name?: string;
+    visitedAt?: string | null;
+    payload?: RoutePayload;
+    note?: string;
+  }
+): Promise<RouteHistory> {
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (r.name !== undefined) patch.name = r.name;
+  if (r.visitedAt !== undefined) patch.visited_at = r.visitedAt || null;
+  if (r.payload !== undefined) patch.payload = r.payload;
+  if (r.note !== undefined) patch.note = r.note;
+  const { data, error } = await supabase
+    .from("routes")
+    .update(patch)
+    .eq("id", id)
+    .eq("group_id", groupId)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToRoute(data);
+}
+
+export async function deleteRoute(
+  groupId: string,
+  id: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("routes")
+    .delete()
+    .eq("id", id)
+    .eq("group_id", groupId);
+  if (error) throw error;
 }

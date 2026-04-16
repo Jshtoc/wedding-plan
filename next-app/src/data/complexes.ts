@@ -37,6 +37,21 @@ export interface Complex {
   lat?: number;
   lng?: number;
   address?: string;       // 도로명주소 (검색 결과)
+
+  /**
+   * 출퇴근 시간 자동 계산 결과 — assets의 각 사람별 workplaces[]에 대해
+   * Naver Directions로 계산한 차량 소요 시간(분) 캐시.
+   */
+  commutes?: CommuteEntry[];
+}
+
+export interface CommuteEntry {
+  role: "groom" | "bride";
+  label: string;         // Workplace.label 복사본 (표시용)
+  lat?: number;          // 직장 좌표 — 대중교통 딥링크·재계산용
+  lng?: number;
+  driveMinutes?: number;    // 차량 소요 (분) — Naver Directions 자동 계산
+  transitMinutes?: number;  // 대중교통 소요 (분) — 사용자 수동 입력 (확인은 Naver Map 딥링크)
 }
 
 // ── School entries (stored as JSON string in schoolScore column) ──

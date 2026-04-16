@@ -11,6 +11,7 @@ import {
   combinedTotalAssets,
 } from "@/data/assets";
 import TwEmoji from "../ui/TwEmoji";
+import { AddressSearchInput, type AddressResult } from "../ui/AddressSearch";
 
 interface Props {
   initial: PersonAsset[];
@@ -262,6 +263,117 @@ function PersonCard({ asset, onChange, onSave, saving, saved }: PersonCardProps)
               onToggle={boolChange("isFirstHome")}
             />
           </div>
+        </div>
+
+        {/* 직장 주소 — 여러 개 등록 가능, 매물별 출퇴근 시간 자동 계산에 사용 */}
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <TwEmoji emoji="🏢" size={12} />
+              <span className={sectionLabel}>직장 / 자주 가는 곳</span>
+              <span className="text-[10px] text-white/35">
+                매물별 출퇴근 시간 자동 계산에 사용
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                set({
+                  workplaces: [
+                    ...asset.workplaces,
+                    { label: "", address: "", lat: 0, lng: 0 },
+                  ],
+                })
+              }
+              className="text-[10px] text-mint/70 hover:text-mint transition-colors"
+            >
+              + 추가
+            </button>
+          </div>
+          {asset.workplaces.length === 0 ? (
+            <div className="rounded-lg bg-white/[0.02] border border-white/5 border-dashed px-3.5 py-4 text-center">
+              <div className="text-[11px] text-white/40">
+                등록된 직장이 없습니다. 우측 "+ 추가" 버튼으로 등록하세요.
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {asset.workplaces.map((wp, idx) => {
+                const hasCoord = !!(wp.lat && wp.lng);
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-lg bg-white/[0.02] border border-white/10 p-2.5 space-y-2"
+                  >
+                    <div className="flex gap-2">
+                      <input
+                        value={wp.label}
+                        onChange={(e) => {
+                          const next = [...asset.workplaces];
+                          next[idx] = { ...next[idx], label: e.target.value };
+                          set({ workplaces: next });
+                        }}
+                        placeholder="이름 (예: 본사, 여의도 지점)"
+                        className={input + " flex-1 !h-9"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          set({
+                            workplaces: asset.workplaces.filter(
+                              (_, i) => i !== idx
+                            ),
+                          })
+                        }
+                        aria-label="직장 삭제"
+                        className="h-9 w-9 flex-shrink-0 flex items-center justify-center rounded-md text-white/30 hover:text-red-300 hover:bg-red-500/10 border border-white/10 transition-colors"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                          <path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" />
+                        </svg>
+                      </button>
+                    </div>
+                    <AddressSearchInput
+                      value={
+                        hasCoord
+                          ? {
+                              lat: wp.lat,
+                              lng: wp.lng,
+                              roadAddress: wp.address,
+                              jibunAddress: "",
+                              city: "",
+                              district: "",
+                              dong: "",
+                              lawdCd: "",
+                            }
+                          : null
+                      }
+                      onChange={(r: AddressResult | null) => {
+                        const next = [...asset.workplaces];
+                        if (!r) {
+                          next[idx] = {
+                            ...next[idx],
+                            address: "",
+                            lat: 0,
+                            lng: 0,
+                          };
+                        } else {
+                          next[idx] = {
+                            ...next[idx],
+                            address: r.roadAddress || r.jibunAddress || "",
+                            lat: r.lat,
+                            lng: r.lng,
+                          };
+                        }
+                        set({ workplaces: next });
+                      }}
+                      placeholder="직장 주소 검색"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 메모 */}

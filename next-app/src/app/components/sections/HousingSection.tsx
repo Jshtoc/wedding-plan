@@ -618,12 +618,39 @@ function ComplexCard({ complex, onEdit }: ComplexCardProps) {
             )}
 
             {/* 교통/직장 */}
-            {(c.commuteTime || c.subwayLine || c.workplace1 || c.workplace2) && (
+            {(c.commuteTime ||
+              c.subwayLine ||
+              c.workplace1 ||
+              c.workplace2 ||
+              (c.commutes && c.commutes.length > 0)) && (
               <DetailSection icon="🚇" title="교통 / 직장">
                 <DetailRow label="강남역까지" value={c.commuteTime} />
                 <DetailRow label="전철 노선" value={c.subwayLine} />
                 <DetailRow label="직장1 (본인)" value={c.workplace1} />
                 <DetailRow label="직장2 (배우자)" value={c.workplace2} />
+                {c.commutes && c.commutes.length > 0 && (
+                  <>
+                    {c.commutes.map((cm, i) => {
+                      // 텍스트 라벨로만 구성 — 원시 이모지 문자는 피하고
+                      // 대신 "차로"/"대중" 접두를 쓴다 (프로젝트 규칙 준수).
+                      const parts: string[] = [];
+                      if (cm.driveMinutes != null && cm.driveMinutes > 0) {
+                        parts.push(`차로 ${cm.driveMinutes}분`);
+                      }
+                      if (cm.transitMinutes != null && cm.transitMinutes > 0) {
+                        parts.push(`대중 ${cm.transitMinutes}분`);
+                      }
+                      if (parts.length === 0) return null;
+                      return (
+                        <DetailRow
+                          key={i}
+                          label={`${cm.role === "groom" ? "신랑" : "신부"} · ${cm.label}`}
+                          value={parts.join(" · ")}
+                        />
+                      );
+                    })}
+                  </>
+                )}
               </DetailSection>
             )}
 

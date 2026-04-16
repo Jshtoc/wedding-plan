@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Complex, SchoolEntry, parseSchools } from "@/data/complexes";
+import { Complex, CommuteEntry, SchoolEntry, parseSchools } from "@/data/complexes";
+import type { Workplace } from "@/data/assets";
 import TwEmoji from "./ui/TwEmoji";
 import { useAlert, useConfirm } from "./ui/ConfirmModal";
 import { useLoading } from "./ui/LoadingOverlay";
+import { AddressSearchInput, type AddressResult } from "./ui/AddressSearch";
 
 interface Props {
   complex?: Complex | null;
@@ -113,9 +115,6 @@ export default function ComplexFormModal({
   const [fullAddress, setFullAddress] = useState("");
 
   // 주소 검색
-  const [addrQuery, setAddrQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
   const [fetchingPrices, setFetchingPrices] = useState(false);
 
   // 면적별 가격 데이터 (실거래가 API 결과)
@@ -136,6 +135,15 @@ export default function ComplexFormModal({
   // 매칭 실패 시 사용자가 선택할 수 있는 아파트 이름 목록
   const [aptSuggestions, setAptSuggestions] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+  // 네이버부동산 URL 자동 채움
+  const [naverUrl, setNaverUrl] = useState("");
+  const [parsingNaver, setParsingNaver] = useState(false);
+  const [naverError, setNaverError] = useState<string | null>(null);
+
+  // 출퇴근 자동 계산 — 신랑/신부의 workplaces 전부에 대해 계산한 결과 배열
+  const [commutes, setCommutes] = useState<CommuteEntry[]>([]);
+  const [computingCommute, setComputingCommute] = useState(false);
+  const [commuteError, setCommuteError] = useState<string | null>(null);
   const showAlert = useAlert();
   const showConfirm = useConfirm();
   const loadingCtx = useLoading();
@@ -170,6 +178,7 @@ export default function ComplexFormModal({
       if (complex.lat) setLat(complex.lat);
       if (complex.lng) setLng(complex.lng);
       if (complex.address) setFullAddress(complex.address);
+      setCommutes(complex.commutes ?? []);
     }
   }, [complex]);
 
@@ -194,44 +203,191 @@ export default function ComplexFormModal({
     }
   };
 
-  const handleSearch = async () => {
-    const q = addrQuery.trim();
-    if (!q) {
-      setSearchError("주소를 입력해주세요.");
+  /**
+   * When the user picks an address (or clears it) in the AddressSearchInput,
+   * sync coordinate/address state and auto-fill the city/district/dong
+   * fields when empty. Kicks off the 실거래가 lookup if a 법정동코드 is
+   * available for the chosen address.
+   */
+  const handleAddressChange = (r: AddressResult | null) => {
+    if (!r) {
+      setLat(undefined);
+      setLng(undefined);
+      setFullAddress("");
+      setAreaPrices([]);
+      setSelectedArea(null);
+      setAptSuggestions([]);
       return;
     }
-    setSearching(true);
+    setLat(r.lat);
+    setLng(r.lng);
+    setFullAddress(r.roadAddress || r.jibunAddress || "");
+    // Auto-fill city/district/dong only when empty — don't overwrite the
+    // user's prior edits.
+    if (r.city && !city) setCity(r.city);
+    if (r.district && !district) setDistrict(r.district);
+    if (r.dong && !dong) setDong(r.dong);
+    if (!name && r.roadAddress) setName(r.roadAddress);
+    if (r.lawdCd) {
+      fetchAreaList(r.lawdCd, r.roadAddress || r.jibunAddress || "");
+    }
+  };
+
+  /**
+   * 네이버부동산 URL을 붙여넣고 "자동 채움"을 누르면 단지 기본 정보를
+   * 긁어서 폼에 채운다. 빈 필드만 덮어쓰는 원칙 — 사용자가 이미 입력한
+   * 값은 유지. 좌표가 오면 주소 검색을 건너뛰고 바로 실거래가 조회도
+   * 트리거한다.
+   */
+  const handleParseNaver = async () => {
+    const u = naverUrl.trim();
+    if (!u) {
+      setNaverError("네이버부동산 URL을 입력해주세요.");
+      return;
+    }
+    setParsingNaver(true);
+    setNaverError(null);
     loadingCtx.show();
-    setSearchError(null);
     try {
-      const res = await fetch("/api/naver/geocode", {
+      const res = await fetch("/api/complexes/parse-naver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ url: u }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setSearchError(data.error || "주소 검색 실패");
+        setNaverError(data.error || "자동 채움 실패");
         return;
       }
-      // 좌표 + 주소 저장
-      setLat(data.lat);
-      setLng(data.lng);
-      setFullAddress(data.roadAddress || q);
-      // 시/구/동 자동 채움 (비어있을 때만)
+      // 빈 필드만 채움
+      if (data.name && !name) setName(data.name);
       if (data.city && !city) setCity(data.city);
       if (data.district && !district) setDistrict(data.district);
       if (data.dong && !dong) setDong(data.dong);
-      // 단지명도 비어있으면 검색어로 채움
-      if (!name && q) setName(q);
-      // 법정동코드 있으면 면적 목록 조회 (가격은 면적 선택 시)
-      if (data.lawdCd) {
-        fetchAreaList(data.lawdCd, q);
+      if (data.yearUnits && !yearUnits) setYearUnits(data.yearUnits);
+      if (data.address && !fullAddress) setFullAddress(data.address);
+      if (data.lat && !lat) setLat(data.lat);
+      if (data.lng && !lng) setLng(data.lng);
+      // 호가 범위 → 아직 매매가 없으면 최대가를 기본값으로 제안
+      if (data.salePriceMax > 0 && !salePrice) setSalePrice(data.salePriceMax);
+      if (data.jeonseMax > 0 && !jeonsePrice) setJeonsePrice(data.jeonseMax);
+      // 메모에 출처 URL 기록 (덮어쓰지 않음)
+      if (data.sourceUrl && !note) {
+        setNote(`출처: ${data.sourceUrl}`);
       }
+      setNaverUrl("");
     } catch (e: unknown) {
-      setSearchError(e instanceof Error ? e.message : "네트워크 오류");
+      setNaverError(e instanceof Error ? e.message : "네트워크 오류");
     } finally {
-      setSearching(false);
+      setParsingNaver(false);
+      loadingCtx.hide();
+    }
+  };
+
+  /**
+   * 매물 좌표 ↔ 신랑/신부가 등록해둔 모든 직장 좌표 사이의 차량 소요
+   * 시간을 병렬로 계산. 결과는 `CommuteEntry[]`로 누적 — 신랑 직장 1~N,
+   * 신부 직장 1~M 순으로 포함된다. 좌표가 없는 workplace는 스킵.
+   */
+  const handleCommuteCalc = async () => {
+    if (!lat || !lng) {
+      setCommuteError("먼저 주소 검색으로 매물 좌표를 설정해주세요.");
+      return;
+    }
+    setComputingCommute(true);
+    setCommuteError(null);
+    loadingCtx.show();
+    try {
+      const assetsRes = await fetch("/api/assets");
+      const assetsData = await assetsRes.json();
+      if (!assetsRes.ok || !Array.isArray(assetsData)) {
+        setCommuteError("자산 정보를 불러오지 못했습니다.");
+        return;
+      }
+      interface AssetRow {
+        role: "groom" | "bride";
+        workplaces?: Workplace[];
+      }
+      const rows = assetsData as AssetRow[];
+
+      // 모든 (role, workplace) 조합을 flatten — 좌표 있는 것만.
+      const jobs: { role: "groom" | "bride"; wp: Workplace }[] = [];
+      for (const role of ["groom", "bride"] as const) {
+        const r = rows.find((a) => a.role === role);
+        for (const wp of r?.workplaces || []) {
+          if (wp.lat && wp.lng) jobs.push({ role, wp });
+        }
+      }
+      if (jobs.length === 0) {
+        setCommuteError(
+          "자산 탭에서 직장 주소를 먼저 등록해주세요."
+        );
+        return;
+      }
+
+      // 각 직장당 Naver(차량) + TMap(대중교통) 두 API 를 병렬 호출.
+      // Promise.all of Promise.all — 전체 요청이 동시에 날아감.
+      const results = await Promise.all(
+        jobs.map(({ wp }) =>
+          Promise.all([
+            fetch("/api/naver/directions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                waypoints: [
+                  { lat, lng },
+                  { lat: wp.lat, lng: wp.lng },
+                ],
+              }),
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null),
+            fetch("/api/tmap/transit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                waypoints: [
+                  { lat, lng },
+                  { lat: wp.lat, lng: wp.lng },
+                ],
+              }),
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null),
+          ])
+        )
+      );
+
+      const toMin = (ms: unknown) =>
+        typeof ms === "number" && Number.isFinite(ms)
+          ? Math.round(ms / 60000)
+          : undefined;
+
+      const entries: CommuteEntry[] = jobs.map(({ role, wp }, i) => {
+        const [driveRes, transitRes] = results[i];
+        return {
+          role,
+          label: wp.label || wp.address || "직장",
+          lat: wp.lat,
+          lng: wp.lng,
+          driveMinutes: toMin(driveRes?.totalDuration),
+          transitMinutes: toMin(transitRes?.totalDuration),
+        };
+      });
+
+      if (
+        entries.every((e) => e.driveMinutes == null && e.transitMinutes == null)
+      ) {
+        setCommuteError("경로 계산에 실패했습니다.");
+        return;
+      }
+      setCommutes(entries);
+    } catch (e: unknown) {
+      setCommuteError(
+        e instanceof Error ? e.message : "출퇴근 계산 중 오류가 발생했습니다."
+      );
+    } finally {
+      setComputingCommute(false);
       loadingCtx.hide();
     }
   };
@@ -320,6 +476,7 @@ export default function ComplexFormModal({
       lat,
       lng,
       address: fullAddress || undefined,
+      commutes,
     };
 
     const url = isEdit ? `/api/complexes/${complex!.id}` : "/api/complexes";
@@ -375,6 +532,53 @@ export default function ComplexFormModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 space-y-7">
+          {/* ── 네이버부동산 URL 자동 채움 ── */}
+          {!isEdit && (
+            <div className="rounded-2xl border border-mint/20 bg-mint/[0.04] p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <TwEmoji emoji="🔗" size={14} />
+                <span className={sectionTitle + " text-mint/80"}>
+                  네이버부동산에서 자동 채움
+                </span>
+              </div>
+              <div className="text-[11px] text-white/50 leading-relaxed mb-3">
+                단지 URL을 붙여넣으면 이름·주소·연식·세대수·좌표·호가를 자동으로 채워줍니다.
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={naverUrl}
+                  onChange={(e) => {
+                    setNaverUrl(e.target.value);
+                    setNaverError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleParseNaver();
+                    }
+                  }}
+                  placeholder="https://new.land.naver.com/complexes/..."
+                  className={input + " flex-1"}
+                  disabled={parsingNaver}
+                />
+                <button
+                  type="button"
+                  onClick={handleParseNaver}
+                  disabled={parsingNaver || !naverUrl.trim()}
+                  className="h-11 px-4 rounded-lg text-[11px] font-semibold bg-mint text-gray-900 hover:bg-mint/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                >
+                  {parsingNaver ? "가져오는 중..." : "자동 채움"}
+                </button>
+              </div>
+              {naverError && (
+                <div className="mt-2 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/10 border border-red-400/20 px-3 py-2 rounded-lg">
+                  <TwEmoji emoji="⚠️" size={13} className="flex-shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{naverError}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── 단지정보 ── */}
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -394,57 +598,25 @@ export default function ComplexFormModal({
               {/* 주소 검색 */}
               <div>
                 <label className={label}>주소</label>
-                <div className="flex gap-2">
-                  <input
-                    value={fullAddress || addrQuery}
-                    onChange={(e) => {
-                      if (!fullAddress) {
-                        setAddrQuery(e.target.value);
-                        setSearchError(null);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !fullAddress) {
-                        e.preventDefault();
-                        handleSearch();
-                      }
-                    }}
-                    placeholder="단지명 또는 도로명주소 입력"
-                    className={input + " flex-1"}
-                    disabled={searching || !!fullAddress}
-                  />
-                  {fullAddress ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFullAddress("");
-                        setAddrQuery("");
-                        setLat(undefined);
-                        setLng(undefined);
-                        setAreaPrices([]);
-                        setSelectedArea(null);
-                      }}
-                      className={ghostBtn + " whitespace-nowrap"}
-                    >
-                      변경
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSearch}
-                      disabled={searching || !addrQuery.trim()}
-                      className={ghostBtn + " whitespace-nowrap"}
-                    >
-                      {searching ? "검색중..." : "검색"}
-                    </button>
-                  )}
-                </div>
-                {searchError && (
-                  <div className="mt-2 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/10 border border-red-400/20 px-3 py-2 rounded-lg">
-                    <TwEmoji emoji="⚠️" size={13} className="flex-shrink-0 mt-0.5" />
-                    <span>{searchError}</span>
-                  </div>
-                )}
+                <AddressSearchInput
+                  value={
+                    fullAddress && lat != null && lng != null
+                      ? {
+                          lat,
+                          lng,
+                          roadAddress: fullAddress,
+                          jibunAddress: "",
+                          city,
+                          district,
+                          dong,
+                          lawdCd: "",
+                        }
+                      : null
+                  }
+                  onChange={handleAddressChange}
+                  placeholder="주소 검색 (도로명 또는 건물명)"
+                  initialQuery={name}
+                />
                 {fullAddress && (
                   <div className="mt-2 space-y-2">
                     {fetchingPrices && (
@@ -723,6 +895,178 @@ export default function ComplexFormModal({
                     className={input}
                   />
                 </div>
+              </div>
+
+              {/* 출퇴근 시간 — 차량(Naver) + 대중교통(TMap) 둘 다 자동 */}
+              <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3.5">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <TwEmoji emoji="🚗" size={12} />
+                    <span className="text-[10px] font-semibold text-white/60 tracking-wider uppercase">
+                      출퇴근 시간
+                    </span>
+                    <span className="text-[10px] text-white/35">
+                      차량 · 대중교통 자동 계산
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCommuteCalc}
+                    disabled={computingCommute || !lat || !lng}
+                    className="h-8 px-3 inline-flex items-center gap-1 rounded-md text-[10px] font-semibold text-mint bg-mint/10 hover:bg-mint/15 border border-mint/25 hover:border-mint/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {computingCommute ? "계산 중..." : "자동 계산"}
+                  </button>
+                </div>
+                {commutes.length === 0 ? (
+                  <div className="text-[11px] text-white/40 leading-relaxed">
+                    자산 탭에서 직장을 등록한 뒤 "자동 계산"을 누르면 각 직장까지 <strong className="text-white/60">차량</strong>과 <strong className="text-white/60">대중교통</strong> 소요 시간이 모두 채워집니다.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {commutes.map((c, idx) => {
+                      const transitUrl =
+                        lat && lng && c.lat && c.lng
+                          ? `https://map.naver.com/p/directions/${lng},${lat},${encodeURIComponent(
+                              name || "매물"
+                            )}/${c.lng},${c.lat},${encodeURIComponent(
+                              c.label || "직장"
+                            )}/-/transit`
+                          : null;
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-lg bg-white/[0.02] border border-white/10 p-2.5"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={
+                                "inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider flex-shrink-0 " +
+                                (c.role === "groom"
+                                  ? "text-sky-300 bg-sky-500/10 border border-sky-400/25"
+                                  : "text-pink-300 bg-pink-500/10 border border-pink-400/25")
+                              }
+                            >
+                              {c.role === "groom" ? "신랑" : "신부"}
+                            </span>
+                            <span className="flex-1 min-w-0 text-[12px] text-white/80 truncate">
+                              {c.label}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCommutes((prev) =>
+                                  prev.filter((_, i) => i !== idx)
+                                )
+                              }
+                              aria-label="항목 삭제"
+                              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-white/25 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                            >
+                              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                <path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <div className="flex items-center gap-1 mb-1 px-0.5">
+                                <TwEmoji emoji="🚗" size={10} />
+                                <span className="text-[9px] font-medium text-white/45 tracking-wider uppercase">
+                                  차량
+                                </span>
+                              </div>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={c.driveMinutes ?? ""}
+                                  onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    setCommutes((prev) =>
+                                      prev.map((x, i) =>
+                                        i === idx
+                                          ? {
+                                              ...x,
+                                              driveMinutes:
+                                                Number.isFinite(v) && v >= 0
+                                                  ? v
+                                                  : undefined,
+                                            }
+                                          : x
+                                      )
+                                    );
+                                  }}
+                                  placeholder="0"
+                                  className={input + " pr-8 !h-8 text-[12px]"}
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-white/40 pointer-events-none">
+                                  분
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between gap-1 mb-1 px-0.5">
+                                <div className="flex items-center gap-1">
+                                  <TwEmoji emoji="🚊" size={10} />
+                                  <span className="text-[9px] font-medium text-white/45 tracking-wider uppercase">
+                                    대중교통
+                                  </span>
+                                </div>
+                                {transitUrl && (
+                                  <a
+                                    href={transitUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[9px] text-violet-300/80 hover:text-violet-300 transition-colors"
+                                    title="네이버지도 대중교통으로 확인"
+                                  >
+                                    확인 ↗
+                                  </a>
+                                )}
+                              </div>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={c.transitMinutes ?? ""}
+                                  onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    setCommutes((prev) =>
+                                      prev.map((x, i) =>
+                                        i === idx
+                                          ? {
+                                              ...x,
+                                              transitMinutes:
+                                                Number.isFinite(v) && v >= 0
+                                                  ? v
+                                                  : undefined,
+                                            }
+                                          : x
+                                      )
+                                    );
+                                  }}
+                                  placeholder="0"
+                                  className={input + " pr-8 !h-8 text-[12px]"}
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-white/40 pointer-events-none">
+                                  분
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {commuteError && (
+                  <div className="mt-2 flex items-start gap-1.5 text-[11px] text-red-300">
+                    <TwEmoji emoji="⚠️" size={11} className="flex-shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{commuteError}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
