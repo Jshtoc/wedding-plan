@@ -11,6 +11,7 @@ import {
 import { Complex, CommuteEntry } from "@/data/complexes";
 import { PersonAsset, AssetRole, Workplace } from "@/data/assets";
 import { RouteHistory, RoutePayload } from "@/data/routes";
+import { VisitNote } from "@/data/visitNotes";
 
 // ═══════════════════════════════════════════════════════════════
 // Every read/write function takes a `groupId` parameter so data
@@ -607,6 +608,89 @@ export async function deleteRoute(
 ): Promise<void> {
   const { error } = await supabase
     .from("routes")
+    .delete()
+    .eq("id", id)
+    .eq("group_id", groupId);
+  if (error) throw error;
+}
+
+/* ─────────────── Visit Notes (임장 메모) ─────────────── */
+
+function rowToVisitNote(row: Record<string, unknown>): VisitNote {
+  return {
+    id: row.id as number,
+    complexId: (row.complex_id as number | null) ?? null,
+    title: (row.title as string) || "",
+    content: (row.content as string) || "",
+    pros: (row.pros as string) || "",
+    cons: (row.cons as string) || "",
+    rating: (row.rating as number) || 0,
+    photos: Array.isArray(row.photos) ? (row.photos as string[]) : [],
+    visitedAt: (row.visited_at as string) || "",
+    createdAt: (row.created_at as string) || "",
+    updatedAt: (row.updated_at as string) || "",
+  };
+}
+
+function visitNoteToRow(n: Omit<VisitNote, "id" | "createdAt" | "updatedAt">) {
+  return {
+    complex_id: n.complexId ?? null,
+    title: n.title,
+    content: n.content,
+    pros: n.pros,
+    cons: n.cons,
+    rating: n.rating,
+    photos: n.photos ?? [],
+    visited_at: n.visitedAt || null,
+  };
+}
+
+export async function getVisitNotes(groupId: string): Promise<VisitNote[]> {
+  const { data, error } = await supabase
+    .from("visit_notes")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("visited_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(rowToVisitNote);
+}
+
+export async function createVisitNote(
+  groupId: string,
+  n: Omit<VisitNote, "id" | "createdAt" | "updatedAt">
+): Promise<VisitNote> {
+  const { data, error } = await supabase
+    .from("visit_notes")
+    .insert({ ...visitNoteToRow(n), group_id: groupId })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToVisitNote(data);
+}
+
+export async function updateVisitNote(
+  groupId: string,
+  id: number,
+  n: Omit<VisitNote, "id" | "createdAt" | "updatedAt">
+): Promise<VisitNote> {
+  const { data, error } = await supabase
+    .from("visit_notes")
+    .update({ ...visitNoteToRow(n), updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("group_id", groupId)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToVisitNote(data);
+}
+
+export async function deleteVisitNote(
+  groupId: string,
+  id: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("visit_notes")
     .delete()
     .eq("id", id)
     .eq("group_id", groupId);

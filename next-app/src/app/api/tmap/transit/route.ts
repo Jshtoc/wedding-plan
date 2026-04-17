@@ -17,7 +17,9 @@ import { NextRequest, NextResponse } from "next/server";
  *   Key env:  TMAP_APP_KEY
  */
 
-const APP_KEY = process.env.TMAP_APP_KEY!;
+// ⚠️ Next.js에서 `.env.local` 변경 후에는 dev 서버(`npm run dev`)를 반드시
+// 다시 시작해야 이 값이 로드됩니다.
+const APP_KEY = process.env.TMAP_APP_KEY;
 const ENDPOINT = "https://apis.openapi.sk.com/transit/routes";
 
 interface Waypoint {
@@ -45,8 +47,14 @@ interface TransitResponse {
 export async function POST(req: NextRequest) {
   try {
     if (!APP_KEY) {
+      console.error(
+        "TMAP_APP_KEY가 설정되지 않았습니다. .env.local에 추가 후 dev 서버를 재시작하세요."
+      );
       return NextResponse.json(
-        { error: "TMAP_APP_KEY가 설정되지 않았습니다." },
+        {
+          error:
+            "TMAP_APP_KEY가 설정되지 않았습니다. .env.local에 추가 후 'npm run dev'를 다시 시작해주세요.",
+        },
         { status: 500 }
       );
     }
@@ -60,6 +68,16 @@ export async function POST(req: NextRequest) {
     }
     const [from, to] = waypoints;
 
+    const body = {
+      startX: String(from.lng),
+      startY: String(from.lat),
+      endX: String(to.lng),
+      endY: String(to.lat),
+      count: 1,
+      lang: 0,
+      format: "json",
+    };
+
     const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: {
@@ -67,32 +85,42 @@ export async function POST(req: NextRequest) {
         appKey: APP_KEY,
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        startX: String(from.lng),
-        startY: String(from.lat),
-        endX: String(to.lng),
-        endY: String(to.lat),
-        count: 1,
-        lang: 0,
-        format: "json",
-      }),
+      body: JSON.stringify(body),
     });
 
+    // TMap은 경로 없음/잘못된 좌표 등에 400/404를 돌려주면서도 JSON body에
+    // 상세 메시지를 담는다. 본문을 먼저 파싱하고 그 내용을 그대로 전파한다.
+    const rawText = await res.text();
+    let data: TransitResponse & { error?: { message?: string } } | null = null;
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch {
+      // non-JSON response (e.g. HTML 에러 페이지)
+    }
+
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("TMap transit error:", res.status, text);
+      const tmapMsg =
+        (data as { error?: { message?: string } } | null)?.error?.message ||
+        data?.result?.message ||
+        rawText.slice(0, 200);
+      console.error(
+        "TMap transit API error:",
+        res.status,
+        tmapMsg,
+        "request:",
+        body
+      );
       return NextResponse.json(
-        { error: `TMap 대중교통 API 실패 (${res.status})` },
+        { error: `TMap 대중교통 API 실패 (${res.status}) ${tmapMsg}` },
         { status: 502 }
       );
     }
 
-    const data = (await res.json()) as TransitResponse;
-    // 대중교통 경로가 없을 때 TMap은 result.status=11 (동일 출발/도착 등)을
-    // 포함한 에러 구조로 응답한다.
-    const it = data.metaData?.plan?.itineraries?.[0];
+    // 경로가 없을 때 TMap은 200 OK로 내려오면서 result.status에 에러코드를 둔다.
+    const it = data?.metaData?.plan?.itineraries?.[0];
     if (!it) {
-      const msg = data.result?.message || "대중교통 경로를 찾지 못했습니다.";
+      const msg = data?.result?.message || "대중교통 경로를 찾지 못했습니다.";
+      console.warn("TMap transit no route:", msg, "request:", body);
       return NextResponse.json({ error: msg }, { status: 404 });
     }
 

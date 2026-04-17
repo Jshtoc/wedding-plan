@@ -326,34 +326,39 @@ export default function ComplexFormModal({
       }
 
       // 각 직장당 Naver(차량) + TMap(대중교통) 두 API 를 병렬 호출.
-      // Promise.all of Promise.all — 전체 요청이 동시에 날아감.
+      // 실패한 API는 null을 반환하되, 에러 메시지는 수집해서 UI에 노출.
+      const collectedErrors: string[] = [];
+      const safeFetch = async (url: string, wp: Workplace, kind: string) => {
+        try {
+          const r = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              waypoints: [
+                { lat, lng },
+                { lat: wp.lat, lng: wp.lng },
+              ],
+            }),
+          });
+          const data = await r.json().catch(() => null);
+          if (!r.ok) {
+            if (data?.error) collectedErrors.push(`[${kind}] ${data.error}`);
+            return null;
+          }
+          return data;
+        } catch (e) {
+          collectedErrors.push(
+            `[${kind}] ${e instanceof Error ? e.message : "네트워크 오류"}`
+          );
+          return null;
+        }
+      };
+
       const results = await Promise.all(
         jobs.map(({ wp }) =>
           Promise.all([
-            fetch("/api/naver/directions", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                waypoints: [
-                  { lat, lng },
-                  { lat: wp.lat, lng: wp.lng },
-                ],
-              }),
-            })
-              .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null),
-            fetch("/api/tmap/transit", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                waypoints: [
-                  { lat, lng },
-                  { lat: wp.lat, lng: wp.lng },
-                ],
-              }),
-            })
-              .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null),
+            safeFetch("/api/naver/directions", wp, "차량"),
+            safeFetch("/api/tmap/transit", wp, "대중교통"),
           ])
         )
       );
@@ -378,10 +383,20 @@ export default function ComplexFormModal({
       if (
         entries.every((e) => e.driveMinutes == null && e.transitMinutes == null)
       ) {
-        setCommuteError("경로 계산에 실패했습니다.");
+        const uniq = Array.from(new Set(collectedErrors)).slice(0, 2);
+        setCommuteError(
+          uniq.length > 0
+            ? `경로 계산에 실패했습니다.\n${uniq.join("\n")}`
+            : "경로 계산에 실패했습니다."
+        );
         return;
       }
       setCommutes(entries);
+      // 일부만 실패한 경우(예: 차량은 됐지만 대중교통은 실패) 경고로 노출.
+      if (collectedErrors.length > 0) {
+        const uniq = Array.from(new Set(collectedErrors)).slice(0, 2);
+        setCommuteError(`일부 계산이 실패했어요.\n${uniq.join("\n")}`);
+      }
     } catch (e: unknown) {
       setCommuteError(
         e instanceof Error ? e.message : "출퇴근 계산 중 오류가 발생했습니다."
@@ -1064,7 +1079,9 @@ export default function ComplexFormModal({
                 {commuteError && (
                   <div className="mt-2 flex items-start gap-1.5 text-[11px] text-red-300">
                     <TwEmoji emoji="⚠️" size={11} className="flex-shrink-0 mt-0.5" />
-                    <span className="leading-relaxed">{commuteError}</span>
+                    <span className="leading-relaxed whitespace-pre-line">
+                      {commuteError}
+                    </span>
                   </div>
                 )}
               </div>
