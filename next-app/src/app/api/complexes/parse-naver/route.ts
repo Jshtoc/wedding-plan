@@ -77,7 +77,30 @@ interface NaverComplexResponse {
 }
 
 const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+/**
+ * Naver Land SPA는 모든 API 요청에 Bearer 토큰을 첨부한다.
+ * 이 토큰은 로그인 없이 공개 OAuth 엔드포인트에서 발급받을 수 있다.
+ */
+async function getNaverToken(): Promise<string | null> {
+  try {
+    const res = await fetch("https://new.land.naver.com/api/oauth/token", {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json, text/plain, */*",
+        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+        Referer: "https://new.land.naver.com/",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { access_token?: string };
+    return data?.access_token ? `Bearer ${data.access_token}` : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -98,25 +121,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Naver's internal SPA API — no official docs, but stable for years.
+    // Step 1: 토큰 발급 (실패해도 토큰 없이 재시도)
+    const authorization = await getNaverToken();
+
+    // Step 2: Naver's internal SPA API
     const apiUrl = `https://new.land.naver.com/api/complexes/${complexNo}?sameAddressGroup=false`;
+    const apiHeaders: Record<string, string> = {
+      "User-Agent": UA,
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+      Referer: `https://new.land.naver.com/complexes/${complexNo}`,
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+    };
+    if (authorization) apiHeaders["Authorization"] = authorization;
+
     const apiRes = await fetch(apiUrl, {
-      headers: {
-        "User-Agent": UA,
-        Accept: "application/json, text/plain, */*",
-        Referer: `https://new.land.naver.com/complexes/${complexNo}`,
-      },
+      headers: apiHeaders,
       cache: "no-store",
     });
 
     if (!apiRes.ok) {
-      console.error(
-        "Naver parse-naver API error:",
-        apiRes.status,
-        await apiRes.text().catch(() => "")
-      );
+      const body = await apiRes.text().catch(() => "");
+      console.error("Naver parse-naver API error:", apiRes.status, body.slice(0, 200));
       return NextResponse.json(
-        { error: `네이버 API 호출 실패 (${apiRes.status})` },
+        { error: `네이버 API 호출 실패 (${apiRes.status}) — 잠시 후 다시 시도해주세요.` },
         { status: 502 }
       );
     }
