@@ -51,7 +51,7 @@ export interface CommuteEntry {
   lat?: number;          // 직장 좌표 — 대중교통 딥링크·재계산용
   lng?: number;
   driveMinutes?: number;    // 차량 소요 (분) — Naver Directions 자동 계산
-  transitMinutes?: number;  // 대중교통 소요 (분) — 사용자 수동 입력 (확인은 Naver Map 딥링크)
+  transitMinutes?: number;  // 대중교통 소요 (분) — 수동 입력 (네이버 지도 딥링크로 확인)
 }
 
 // ── School entries (stored as JSON string in schoolScore column) ──

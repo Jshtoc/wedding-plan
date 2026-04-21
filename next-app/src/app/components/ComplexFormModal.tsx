@@ -325,12 +325,11 @@ export default function ComplexFormModal({
         return;
       }
 
-      // 각 직장당 Naver(차량) + TMap(대중교통) 두 API 를 병렬 호출.
-      // 실패한 API는 null을 반환하되, 에러 메시지는 수집해서 UI에 노출.
+      // 각 직장당 Naver Directions(차량)만 호출.
       const collectedErrors: string[] = [];
-      const safeFetch = async (url: string, wp: Workplace, kind: string) => {
+      const safeFetch = async (wp: Workplace) => {
         try {
-          const r = await fetch(url, {
+          const r = await fetch("/api/naver/directions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -342,47 +341,34 @@ export default function ComplexFormModal({
           });
           const data = await r.json().catch(() => null);
           if (!r.ok) {
-            if (data?.error) collectedErrors.push(`[${kind}] ${data.error}`);
+            if (data?.error) collectedErrors.push(`[차량] ${data.error}`);
             return null;
           }
           return data;
         } catch (e) {
           collectedErrors.push(
-            `[${kind}] ${e instanceof Error ? e.message : "네트워크 오류"}`
+            `[차량] ${e instanceof Error ? e.message : "네트워크 오류"}`
           );
           return null;
         }
       };
 
-      const results = await Promise.all(
-        jobs.map(({ wp }) =>
-          Promise.all([
-            safeFetch("/api/naver/directions", wp, "차량"),
-            safeFetch("/api/tmap/transit", wp, "대중교통"),
-          ])
-        )
-      );
+      const results = await Promise.all(jobs.map(({ wp }) => safeFetch(wp)));
 
       const toMin = (ms: unknown) =>
         typeof ms === "number" && Number.isFinite(ms)
           ? Math.round(ms / 60000)
           : undefined;
 
-      const entries: CommuteEntry[] = jobs.map(({ role, wp }, i) => {
-        const [driveRes, transitRes] = results[i];
-        return {
-          role,
-          label: wp.label || wp.address || "직장",
-          lat: wp.lat,
-          lng: wp.lng,
-          driveMinutes: toMin(driveRes?.totalDuration),
-          transitMinutes: toMin(transitRes?.totalDuration),
-        };
-      });
+      const entries: CommuteEntry[] = jobs.map(({ role, wp }, i) => ({
+        role,
+        label: wp.label || wp.address || "직장",
+        lat: wp.lat,
+        lng: wp.lng,
+        driveMinutes: toMin(results[i]?.totalDuration),
+      }));
 
-      if (
-        entries.every((e) => e.driveMinutes == null && e.transitMinutes == null)
-      ) {
+      if (entries.every((e) => e.driveMinutes == null)) {
         const uniq = Array.from(new Set(collectedErrors)).slice(0, 2);
         setCommuteError(
           uniq.length > 0
@@ -392,11 +378,6 @@ export default function ComplexFormModal({
         return;
       }
       setCommutes(entries);
-      // 일부만 실패한 경우(예: 차량은 됐지만 대중교통은 실패) 경고로 노출.
-      if (collectedErrors.length > 0) {
-        const uniq = Array.from(new Set(collectedErrors)).slice(0, 2);
-        setCommuteError(`일부 계산이 실패했어요.\n${uniq.join("\n")}`);
-      }
     } catch (e: unknown) {
       setCommuteError(
         e instanceof Error ? e.message : "출퇴근 계산 중 오류가 발생했습니다."
@@ -447,8 +428,8 @@ export default function ComplexFormModal({
     if (ap.jeonsePrice > 0) setJeonsePrice(ap.jeonsePrice);
     if (ap.peakPrice > 0) setPeakPrice(ap.peakPrice);
     if (ap.lowPrice > 0) setLowPrice(ap.lowPrice);
-    // 매매가도 직전 실거래가로 설정 (사용자가 수정 가능)
-    if (ap.lastTradePrice > 0 && !salePrice) setSalePrice(ap.lastTradePrice);
+    // 매매가도 직전 실거래가로 업데이트 (면적 변경이니까 덮어쓰기)
+    if (ap.lastTradePrice > 0) setSalePrice(ap.lastTradePrice);
     // 평단가 자동 계산: 매매가 ÷ 평수 (전용면적 ÷ 3.306)
     const price = ap.lastTradePrice || salePrice;
     const pyeong = ap.area / 3.306;
@@ -912,7 +893,7 @@ export default function ComplexFormModal({
                 </div>
               </div>
 
-              {/* 출퇴근 시간 — 차량(Naver) + 대중교통(TMap) 둘 다 자동 */}
+              {/* 출퇴근 시간 — Naver Directions 차량 자동 계산 */}
               <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3.5">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -921,7 +902,7 @@ export default function ComplexFormModal({
                       출퇴근 시간
                     </span>
                     <span className="text-[10px] text-white/35">
-                      차량 · 대중교통 자동 계산
+                      차량 자동 계산
                     </span>
                   </div>
                   <button
@@ -935,7 +916,7 @@ export default function ComplexFormModal({
                 </div>
                 {commutes.length === 0 ? (
                   <div className="text-[11px] text-white/40 leading-relaxed">
-                    자산 탭에서 직장을 등록한 뒤 "자동 계산"을 누르면 각 직장까지 <strong className="text-white/60">차량</strong>과 <strong className="text-white/60">대중교통</strong> 소요 시간이 모두 채워집니다.
+                    자산 탭에서 직장을 등록한 뒤 "자동 계산"을 누르면 각 직장까지 <strong className="text-white/60">차량</strong> 소요 시간이 채워집니다. 대중교통 시간은 직접 입력하거나 네이버 지도 링크로 확인하세요.
                   </div>
                 ) : (
                   <div className="space-y-2">
