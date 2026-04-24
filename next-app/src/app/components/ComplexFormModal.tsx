@@ -116,11 +116,6 @@ export default function ComplexFormModal({
   // 평단가 계산 시 빈 필드 하이라이트
   const [pyeongCalcError, setPyeongCalcError] = useState<"area" | "price" | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // 네이버부동산 URL 자동 채움
-  const [naverUrl, setNaverUrl] = useState("");
-  const [parsingNaver, setParsingNaver] = useState(false);
-  const [naverError, setNaverError] = useState<string | null>(null);
-
   const [areaUnit, setAreaUnit] = useState<"sqm" | "pyeong">("sqm");
   const showAlert = useAlert();
   const showConfirm = useConfirm();
@@ -177,57 +172,6 @@ export default function ComplexFormModal({
       await showAlert("네트워크 오류");
     } finally {
       setDeleting(false);
-    }
-  };
-
-  /**
-   * 네이버부동산 URL을 붙여넣고 "자동 채움"을 누르면 단지 기본 정보를
-   * 긁어서 폼에 채운다. 빈 필드만 덮어쓰는 원칙 — 사용자가 이미 입력한
-   * 값은 유지. 좌표가 오면 주소 검색을 건너뛰고 바로 실거래가 조회도
-   * 트리거한다.
-   */
-  const handleParseNaver = async () => {
-    const u = naverUrl.trim();
-    if (!u) {
-      setNaverError("네이버부동산 URL을 입력해주세요.");
-      return;
-    }
-    setParsingNaver(true);
-    setNaverError(null);
-    loadingCtx.show();
-    try {
-      const res = await fetch("/api/complexes/parse-naver", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setNaverError(data.error || "자동 채움 실패");
-        return;
-      }
-      // 빈 필드만 채움
-      if (data.name && !name) setName(data.name);
-      if (data.city && !city) setCity(data.city);
-      if (data.district && !district) setDistrict(data.district);
-      if (data.dong && !dong) setDong(data.dong);
-      if (data.yearUnits && !yearUnits) setYearUnits(data.yearUnits);
-      if (data.address && !fullAddress) setFullAddress(data.address);
-      if (data.lat && !lat) setLat(data.lat);
-      if (data.lng && !lng) setLng(data.lng);
-      // 호가 범위 → 아직 매매가 없으면 최대가를 기본값으로 제안
-      if (data.salePriceMax > 0 && !salePrice) setSalePrice(data.salePriceMax);
-      if (data.jeonseMax > 0 && !jeonsePrice) setJeonsePrice(data.jeonseMax);
-      // 메모에 출처 URL 기록 (덮어쓰지 않음)
-      if (data.sourceUrl && !note) {
-        setNote(`출처: ${data.sourceUrl}`);
-      }
-      setNaverUrl("");
-    } catch (e: unknown) {
-      setNaverError(e instanceof Error ? e.message : "네트워크 오류");
-    } finally {
-      setParsingNaver(false);
-      loadingCtx.hide();
     }
   };
 
@@ -320,53 +264,6 @@ export default function ComplexFormModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 space-y-7">
-          {/* ── 네이버부동산 URL 자동 채움 ── */}
-          {!isEdit && (
-            <div className="rounded-2xl border border-mint/20 bg-mint/[0.04] p-4">
-              <div className="flex items-center gap-2 mb-2.5">
-                <TwEmoji emoji="🔗" size={14} />
-                <span className={sectionTitle + " text-mint/80"}>
-                  네이버부동산에서 자동 채움
-                </span>
-              </div>
-              <div className="text-[11px] text-white/50 leading-relaxed mb-3">
-                단지 URL을 붙여넣으면 이름·주소·연식·세대수·좌표·호가를 자동으로 채워줍니다.
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={naverUrl}
-                  onChange={(e) => {
-                    setNaverUrl(e.target.value);
-                    setNaverError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleParseNaver();
-                    }
-                  }}
-                  placeholder="https://new.land.naver.com/complexes/..."
-                  className={input + " flex-1"}
-                  disabled={parsingNaver}
-                />
-                <button
-                  type="button"
-                  onClick={handleParseNaver}
-                  disabled={parsingNaver || !naverUrl.trim()}
-                  className="h-11 px-4 rounded-lg text-[11px] font-semibold bg-mint text-gray-900 hover:bg-mint/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
-                >
-                  {parsingNaver ? "가져오는 중..." : "자동 채움"}
-                </button>
-              </div>
-              {naverError && (
-                <div className="mt-2 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/10 border border-red-400/20 px-3 py-2 rounded-lg">
-                  <TwEmoji emoji="⚠️" size={13} className="flex-shrink-0 mt-0.5" />
-                  <span className="leading-relaxed">{naverError}</span>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ── 단지정보 ── */}
           <div>
             <div className="flex items-center gap-2 mb-4">
