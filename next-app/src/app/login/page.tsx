@@ -40,7 +40,7 @@ function LoginForm() {
   };
 
   return (
-    <AuroraBackground className="dark px-5 py-12" animationSpeed={30}>
+    <AuroraBackground className="dark px-5 py-12" animationSpeed={60}>
       {/* Glass card — transparent so the aurora shows through */}
       <form
         onSubmit={onSubmit}
