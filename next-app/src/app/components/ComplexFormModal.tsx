@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Complex, CommuteEntry, SchoolEntry, parseSchools } from "@/data/complexes";
-import type { Workplace } from "@/data/assets";
+import { Complex, SchoolEntry, parseSchools } from "@/data/complexes";
 import TwEmoji from "./ui/TwEmoji";
 import { useAlert, useConfirm } from "./ui/ConfirmModal";
 import { useLoading } from "./ui/LoadingOverlay";
-import { AddressSearchInput, type AddressResult } from "./ui/AddressSearch";
 
 interface Props {
   complex?: Complex | null;
@@ -109,41 +107,20 @@ export default function ComplexFormModal({
   const [isCandidate, setIsCandidate] = useState(false);
   const [note, setNote] = useState("");
 
-  // 좌표 (주소 검색 결과)
+  // 좌표 + 주소 (네이버부동산 URL 자동 채움으로만 채워짐)
   const [lat, setLat] = useState<number | undefined>(undefined);
   const [lng, setLng] = useState<number | undefined>(undefined);
   const [fullAddress, setFullAddress] = useState("");
 
-  // 주소 검색
-  const [fetchingPrices, setFetchingPrices] = useState(false);
-
-  // 면적별 가격 데이터 (실거래가 API 결과)
-  interface AreaPrice {
-    area: number;
-    lastTradePrice: number;
-    jeonsePrice: number;
-    peakPrice: number;
-    lowPrice: number;
-    tradeCount: number;
-    rentCount: number;
-  }
-  const [areaPrices, setAreaPrices] = useState<AreaPrice[]>([]);
-  const [selectedArea, setSelectedArea] = useState<number | null>(null);
-  const [areaUnit, setAreaUnit] = useState<"sqm" | "pyeong">("sqm");
   // 평단가 계산 시 빈 필드 하이라이트
   const [pyeongCalcError, setPyeongCalcError] = useState<"area" | "price" | null>(null);
-  // 매칭 실패 시 사용자가 선택할 수 있는 아파트 이름 목록
-  const [aptSuggestions, setAptSuggestions] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
   // 네이버부동산 URL 자동 채움
   const [naverUrl, setNaverUrl] = useState("");
   const [parsingNaver, setParsingNaver] = useState(false);
   const [naverError, setNaverError] = useState<string | null>(null);
 
-  // 출퇴근 자동 계산 — 신랑/신부의 workplaces 전부에 대해 계산한 결과 배열
-  const [commutes, setCommutes] = useState<CommuteEntry[]>([]);
-  const [computingCommute, setComputingCommute] = useState(false);
-  const [commuteError, setCommuteError] = useState<string | null>(null);
+  const [areaUnit, setAreaUnit] = useState<"sqm" | "pyeong">("sqm");
   const showAlert = useAlert();
   const showConfirm = useConfirm();
   const loadingCtx = useLoading();
@@ -178,7 +155,6 @@ export default function ComplexFormModal({
       if (complex.lat) setLat(complex.lat);
       if (complex.lng) setLng(complex.lng);
       if (complex.address) setFullAddress(complex.address);
-      setCommutes(complex.commutes ?? []);
     }
   }, [complex]);
 
@@ -200,36 +176,6 @@ export default function ComplexFormModal({
       await showAlert("네트워크 오류");
     } finally {
       setDeleting(false);
-    }
-  };
-
-  /**
-   * When the user picks an address (or clears it) in the AddressSearchInput,
-   * sync coordinate/address state and auto-fill the city/district/dong
-   * fields when empty. Kicks off the 실거래가 lookup if a 법정동코드 is
-   * available for the chosen address.
-   */
-  const handleAddressChange = (r: AddressResult | null) => {
-    if (!r) {
-      setLat(undefined);
-      setLng(undefined);
-      setFullAddress("");
-      setAreaPrices([]);
-      setSelectedArea(null);
-      setAptSuggestions([]);
-      return;
-    }
-    setLat(r.lat);
-    setLng(r.lng);
-    setFullAddress(r.roadAddress || r.jibunAddress || "");
-    // Auto-fill city/district/dong only when empty — don't overwrite the
-    // user's prior edits.
-    if (r.city && !city) setCity(r.city);
-    if (r.district && !district) setDistrict(r.district);
-    if (r.dong && !dong) setDong(r.dong);
-    if (!name && r.roadAddress) setName(r.roadAddress);
-    if (r.lawdCd) {
-      fetchAreaList(r.lawdCd, r.roadAddress || r.jibunAddress || "");
     }
   };
 
@@ -284,160 +230,6 @@ export default function ComplexFormModal({
     }
   };
 
-  /**
-   * 매물 좌표 ↔ 신랑/신부가 등록해둔 모든 직장 좌표 사이의 차량 소요
-   * 시간을 병렬로 계산. 결과는 `CommuteEntry[]`로 누적 — 신랑 직장 1~N,
-   * 신부 직장 1~M 순으로 포함된다. 좌표가 없는 workplace는 스킵.
-   */
-  const handleCommuteCalc = async () => {
-    if (!lat || !lng) {
-      setCommuteError("먼저 주소 검색으로 매물 좌표를 설정해주세요.");
-      return;
-    }
-    setComputingCommute(true);
-    setCommuteError(null);
-    loadingCtx.show();
-    try {
-      const assetsRes = await fetch("/api/assets");
-      const assetsData = await assetsRes.json();
-      if (!assetsRes.ok || !Array.isArray(assetsData)) {
-        setCommuteError("자산 정보를 불러오지 못했습니다.");
-        return;
-      }
-      interface AssetRow {
-        role: "groom" | "bride";
-        workplaces?: Workplace[];
-      }
-      const rows = assetsData as AssetRow[];
-
-      // 모든 (role, workplace) 조합을 flatten — 좌표 있는 것만.
-      const jobs: { role: "groom" | "bride"; wp: Workplace }[] = [];
-      for (const role of ["groom", "bride"] as const) {
-        const r = rows.find((a) => a.role === role);
-        for (const wp of r?.workplaces || []) {
-          if (wp.lat && wp.lng) jobs.push({ role, wp });
-        }
-      }
-      if (jobs.length === 0) {
-        setCommuteError(
-          "자산 탭에서 직장 주소를 먼저 등록해주세요."
-        );
-        return;
-      }
-
-      // 각 직장당 Naver Directions(차량)만 호출.
-      const collectedErrors: string[] = [];
-      const safeFetch = async (wp: Workplace) => {
-        try {
-          const r = await fetch("/api/naver/directions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              waypoints: [
-                { lat, lng },
-                { lat: wp.lat, lng: wp.lng },
-              ],
-            }),
-          });
-          const data = await r.json().catch(() => null);
-          if (!r.ok) {
-            if (data?.error) collectedErrors.push(`[차량] ${data.error}`);
-            return null;
-          }
-          return data;
-        } catch (e) {
-          collectedErrors.push(
-            `[차량] ${e instanceof Error ? e.message : "네트워크 오류"}`
-          );
-          return null;
-        }
-      };
-
-      const results = await Promise.all(jobs.map(({ wp }) => safeFetch(wp)));
-
-      const toMin = (ms: unknown) =>
-        typeof ms === "number" && Number.isFinite(ms)
-          ? Math.round(ms / 60000)
-          : undefined;
-
-      const entries: CommuteEntry[] = jobs.map(({ role, wp }, i) => ({
-        role,
-        label: wp.label || wp.address || "직장",
-        lat: wp.lat,
-        lng: wp.lng,
-        driveMinutes: toMin(results[i]?.totalDuration),
-      }));
-
-      if (entries.every((e) => e.driveMinutes == null)) {
-        const uniq = Array.from(new Set(collectedErrors)).slice(0, 2);
-        setCommuteError(
-          uniq.length > 0
-            ? `경로 계산에 실패했습니다.\n${uniq.join("\n")}`
-            : "경로 계산에 실패했습니다."
-        );
-        return;
-      }
-      setCommutes(entries);
-    } catch (e: unknown) {
-      setCommuteError(
-        e instanceof Error ? e.message : "출퇴근 계산 중 오류가 발생했습니다."
-      );
-    } finally {
-      setComputingCommute(false);
-      loadingCtx.hide();
-    }
-  };
-
-  const fetchAreaList = async (code: string, searchName: string) => {
-    setFetchingPrices(true);
-    setAreaPrices([]);
-    setSelectedArea(null);
-    try {
-      const res = await fetch("/api/realestate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lawdCd: code,
-          aptName: name || searchName,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        console.warn("실거래가 조회 실패:", data.error);
-        return;
-      }
-      if (data.matchedName && !name) setName(data.matchedName);
-      if (data.areas && data.areas.length > 0) {
-        setAreaPrices(data.areas);
-        setAptSuggestions([]);
-      } else if (data.suggestions && data.suggestions.length > 0) {
-        setAptSuggestions(data.suggestions);
-      }
-    } catch {
-      // silent
-    } finally {
-      setFetchingPrices(false);
-    }
-  };
-
-  const handleSelectArea = (ap: AreaPrice) => {
-    setSelectedArea(ap.area);
-    setArea(`${ap.area}㎡`);
-    // 가격 자동 채움 (덮어쓰기 — 면적 변경이니까)
-    if (ap.lastTradePrice > 0) setLastTradePrice(ap.lastTradePrice);
-    if (ap.jeonsePrice > 0) setJeonsePrice(ap.jeonsePrice);
-    if (ap.peakPrice > 0) setPeakPrice(ap.peakPrice);
-    if (ap.lowPrice > 0) setLowPrice(ap.lowPrice);
-    // 매매가도 직전 실거래가로 업데이트 (면적 변경이니까 덮어쓰기)
-    if (ap.lastTradePrice > 0) setSalePrice(ap.lastTradePrice);
-    // 평단가 자동 계산: 매매가 ÷ 평수 (전용면적 ÷ 3.306)
-    const price = ap.lastTradePrice || salePrice;
-    const pyeong = ap.area / 3.306;
-    if (price > 0 && pyeong > 0) {
-      setPyeongPrice(Math.round(price / pyeong));
-    }
-  };
-
   const handleSave = async () => {
     if (!name.trim()) {
       await showAlert("단지명을 입력하세요.");
@@ -472,7 +264,6 @@ export default function ComplexFormModal({
       lat,
       lng,
       address: fullAddress || undefined,
-      commutes,
     };
 
     const url = isEdit ? `/api/complexes/${complex!.id}` : "/api/complexes";
@@ -591,96 +382,15 @@ export default function ComplexFormModal({
                   className={input}
                 />
               </div>
-              {/* 주소 검색 */}
+              {/* 주소 직접 입력 */}
               <div>
-                <label className={label}>주소</label>
-                <AddressSearchInput
-                  value={
-                    fullAddress && lat != null && lng != null
-                      ? {
-                          lat,
-                          lng,
-                          roadAddress: fullAddress,
-                          jibunAddress: "",
-                          city,
-                          district,
-                          dong,
-                          lawdCd: "",
-                        }
-                      : null
-                  }
-                  onChange={handleAddressChange}
-                  placeholder="주소 검색 (도로명 또는 건물명)"
-                  initialQuery={name}
+                <label className={label}>주소 (도로명)</label>
+                <input
+                  value={fullAddress}
+                  onChange={(e) => setFullAddress(e.target.value)}
+                  placeholder="예: 서울특별시 마포구 월드컵북로 396"
+                  className={input}
                 />
-                {fullAddress && (
-                  <div className="mt-2 space-y-2">
-                    {fetchingPrices && (
-                      <div className="flex items-center gap-2 text-[11px] text-white/50 px-1">
-                        <svg className="animate-spin w-3.5 h-3.5 text-mint" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.2" />
-                          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                        </svg>
-                        실거래가 조회 중...
-                      </div>
-                    )}
-                    {/* 매칭 실패 안내 */}
-                    {aptSuggestions.length > 0 && areaPrices.length === 0 && (
-                      <div className="flex items-start gap-2 text-[11px] text-white/50 bg-white/[0.03] border border-white/10 px-3 py-2.5 rounded-lg">
-                        <TwEmoji emoji="📝" size={13} className="flex-shrink-0 mt-0.5" />
-                        <span className="leading-relaxed">
-                          해당 주소의 실거래 데이터를 찾지 못했어요. 아래 가격정보를 직접 입력해주세요.
-                        </span>
-                      </div>
-                    )}
-                    {/* 면적 선택 버튼 */}
-                    {areaPrices.length > 0 && (
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="text-[10px] text-white/40">
-                            전용면적 선택 → 가격정보 자동 입력
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setAreaUnit((u) => u === "sqm" ? "pyeong" : "sqm")}
-                            className="text-[10px] text-mint/70 hover:text-mint transition-colors"
-                          >
-                            {areaUnit === "sqm" ? "평수로 보기" : "㎡로 보기"}
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {areaPrices.map((ap) => {
-                            const active = selectedArea === ap.area;
-                            const label = areaUnit === "sqm"
-                              ? `${ap.area}㎡`
-                              : `${Math.round(ap.area / 3.306)}평`;
-                            return (
-                              <button
-                                key={ap.area}
-                                type="button"
-                                onClick={() => handleSelectArea(ap)}
-                                className={
-                                  "px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors " +
-                                  (active
-                                    ? "bg-mint text-gray-900"
-                                    : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
-                                }
-                              >
-                                {label}
-                                <span className={
-                                  "ml-1 text-[9px] " +
-                                  (active ? "text-gray-900/60" : "text-white/30")
-                                }>
-                                  ({ap.tradeCount}건)
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* 시 / 구 / 동 */}
@@ -893,179 +603,6 @@ export default function ComplexFormModal({
                 </div>
               </div>
 
-              {/* 출퇴근 시간 — Naver Directions 차량 자동 계산 */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3.5">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <TwEmoji emoji="🚗" size={12} />
-                    <span className="text-[10px] font-semibold text-white/60 tracking-wider uppercase">
-                      출퇴근 시간
-                    </span>
-                    <span className="text-[10px] text-white/35">
-                      차량 자동 계산
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCommuteCalc}
-                    disabled={computingCommute || !lat || !lng}
-                    className="h-8 px-3 inline-flex items-center gap-1 rounded-md text-[10px] font-semibold text-mint bg-mint/10 hover:bg-mint/15 border border-mint/25 hover:border-mint/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {computingCommute ? "계산 중..." : "자동 계산"}
-                  </button>
-                </div>
-                {commutes.length === 0 ? (
-                  <div className="text-[11px] text-white/40 leading-relaxed">
-                    자산 탭에서 직장을 등록한 뒤 "자동 계산"을 누르면 각 직장까지 <strong className="text-white/60">차량</strong> 소요 시간이 채워집니다. 대중교통 시간은 직접 입력하거나 네이버 지도 링크로 확인하세요.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {commutes.map((c, idx) => {
-                      const transitUrl =
-                        lat && lng && c.lat && c.lng
-                          ? `https://map.naver.com/p/directions/${lng},${lat},${encodeURIComponent(
-                              name || "매물"
-                            )}/${c.lng},${c.lat},${encodeURIComponent(
-                              c.label || "직장"
-                            )}/-/transit`
-                          : null;
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-lg bg-white/[0.02] border border-white/10 p-2.5"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span
-                              className={
-                                "inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider flex-shrink-0 " +
-                                (c.role === "groom"
-                                  ? "text-sky-300 bg-sky-500/10 border border-sky-400/25"
-                                  : "text-pink-300 bg-pink-500/10 border border-pink-400/25")
-                              }
-                            >
-                              {c.role === "groom" ? "신랑" : "신부"}
-                            </span>
-                            <span className="flex-1 min-w-0 text-[12px] text-white/80 truncate">
-                              {c.label}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCommutes((prev) =>
-                                  prev.filter((_, i) => i !== idx)
-                                )
-                              }
-                              aria-label="항목 삭제"
-                              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-white/25 hover:text-red-300 hover:bg-red-500/10 transition-colors"
-                            >
-                              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                                <path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" />
-                              </svg>
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <div className="flex items-center gap-1 mb-1 px-0.5">
-                                <TwEmoji emoji="🚗" size={10} />
-                                <span className="text-[9px] font-medium text-white/45 tracking-wider uppercase">
-                                  차량
-                                </span>
-                              </div>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  min={0}
-                                  value={c.driveMinutes ?? ""}
-                                  onChange={(e) => {
-                                    const v = parseInt(e.target.value, 10);
-                                    setCommutes((prev) =>
-                                      prev.map((x, i) =>
-                                        i === idx
-                                          ? {
-                                              ...x,
-                                              driveMinutes:
-                                                Number.isFinite(v) && v >= 0
-                                                  ? v
-                                                  : undefined,
-                                            }
-                                          : x
-                                      )
-                                    );
-                                  }}
-                                  placeholder="0"
-                                  className={input + " pr-8 !h-8 text-[12px]"}
-                                />
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-white/40 pointer-events-none">
-                                  분
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex items-center justify-between gap-1 mb-1 px-0.5">
-                                <div className="flex items-center gap-1">
-                                  <TwEmoji emoji="🚊" size={10} />
-                                  <span className="text-[9px] font-medium text-white/45 tracking-wider uppercase">
-                                    대중교통
-                                  </span>
-                                </div>
-                                {transitUrl && (
-                                  <a
-                                    href={transitUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[9px] text-violet-300/80 hover:text-violet-300 transition-colors"
-                                    title="네이버지도 대중교통으로 확인"
-                                  >
-                                    확인 ↗
-                                  </a>
-                                )}
-                              </div>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  min={0}
-                                  value={c.transitMinutes ?? ""}
-                                  onChange={(e) => {
-                                    const v = parseInt(e.target.value, 10);
-                                    setCommutes((prev) =>
-                                      prev.map((x, i) =>
-                                        i === idx
-                                          ? {
-                                              ...x,
-                                              transitMinutes:
-                                                Number.isFinite(v) && v >= 0
-                                                  ? v
-                                                  : undefined,
-                                            }
-                                          : x
-                                      )
-                                    );
-                                  }}
-                                  placeholder="0"
-                                  className={input + " pr-8 !h-8 text-[12px]"}
-                                />
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-white/40 pointer-events-none">
-                                  분
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {commuteError && (
-                  <div className="mt-2 flex items-start gap-1.5 text-[11px] text-red-300">
-                    <TwEmoji emoji="⚠️" size={11} className="flex-shrink-0 mt-0.5" />
-                    <span className="leading-relaxed whitespace-pre-line">
-                      {commuteError}
-                    </span>
-                  </div>
-                )}
-              </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[10px] font-medium text-white/50 uppercase tracking-wider">

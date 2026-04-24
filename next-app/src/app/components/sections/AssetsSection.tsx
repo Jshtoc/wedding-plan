@@ -11,7 +11,6 @@ import {
   combinedTotalAssets,
 } from "@/data/assets";
 import TwEmoji from "../ui/TwEmoji";
-import { AddressSearchInput, type AddressResult } from "../ui/AddressSearch";
 
 interface Props {
   initial: PersonAsset[];
@@ -299,7 +298,6 @@ function PersonCard({ asset, onChange, onSave, saving, saved }: PersonCardProps)
           ) : (
             <div className="space-y-2">
               {asset.workplaces.map((wp, idx) => {
-                const hasCoord = !!(wp.lat && wp.lng);
                 return (
                   <div
                     key={idx}
@@ -333,41 +331,15 @@ function PersonCard({ asset, onChange, onSave, saving, saved }: PersonCardProps)
                         </svg>
                       </button>
                     </div>
-                    <AddressSearchInput
-                      value={
-                        hasCoord
-                          ? {
-                              lat: wp.lat,
-                              lng: wp.lng,
-                              roadAddress: wp.address,
-                              jibunAddress: "",
-                              city: "",
-                              district: "",
-                              dong: "",
-                              lawdCd: "",
-                            }
-                          : null
-                      }
-                      onChange={(r: AddressResult | null) => {
+                    <input
+                      value={wp.address}
+                      onChange={(e) => {
                         const next = [...asset.workplaces];
-                        if (!r) {
-                          next[idx] = {
-                            ...next[idx],
-                            address: "",
-                            lat: 0,
-                            lng: 0,
-                          };
-                        } else {
-                          next[idx] = {
-                            ...next[idx],
-                            address: r.roadAddress || r.jibunAddress || "",
-                            lat: r.lat,
-                            lng: r.lng,
-                          };
-                        }
+                        next[idx] = { ...next[idx], address: e.target.value };
                         set({ workplaces: next });
                       }}
-                      placeholder="직장 주소 검색"
+                      placeholder="직장 주소 (예: 서울특별시 영등포구 여의대로 24)"
+                      className={input + " !h-9"}
                     />
                   </div>
                 );

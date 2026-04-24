@@ -27,7 +27,6 @@ import VendorFormModal from "./VendorFormModal";
 import ComplexFormModal from "./ComplexFormModal";
 import VendorListSection from "./sections/VendorListSection";
 import HousingSection from "./sections/HousingSection";
-import HousingRouteSection from "./sections/HousingRouteSection";
 import VisitNotesSection from "./sections/VisitNotesSection";
 import AssetsSection from "./sections/AssetsSection";
 import TwEmoji from "./ui/TwEmoji";
@@ -43,7 +42,6 @@ type FixedSection =
   | "overview"
   | "assets"
   | "housing"
-  | "housing-routes"
   | "visit-notes"
   | "halls"
   | "studios"
@@ -76,7 +74,6 @@ const ALL_SECTIONS: SectionDef[] = [
   { id: "overview", label: "대시보드", icon: "📊", subtitle: "전체 진행 현황 & 일정" },
   { id: "assets", label: "자산", icon: "💎", subtitle: "자산 현황 및 자금 계획" },
   { id: "housing", label: "매물", icon: "🏠", subtitle: "신혼집 매물 비교 및 정리" },
-  { id: "housing-routes", label: "임장 동선", icon: "🚗", subtitle: "매물 방문 동선 계획" },
   { id: "visit-notes", label: "임장 메모", icon: "📝", subtitle: "현장 방문 사진 · 장단점 · 메모" },
   { id: "halls", label: "웨딩홀", icon: "💒", subtitle: "예식장 비교 및 견적" },
   { id: "studios", label: "스튜디오", icon: "📸", subtitle: "촬영 스튜디오 리스트" },
@@ -95,7 +92,7 @@ const SIDEBAR_NAV: SidebarEntry[] = [
       label: "부동산",
       icon: "🏠",
       items: ALL_SECTIONS.filter((s) =>
-        ["assets", "housing", "housing-routes", "visit-notes"].includes(s.id)
+        ["assets", "housing", "visit-notes"].includes(s.id)
       ),
     },
   },
@@ -806,9 +803,6 @@ export default function WeddingApp() {
               onEdit={handleComplexEdit}
             />
           )}
-          {active === "housing-routes" && (
-            <HousingRouteSection complexes={complexes} />
-          )}
           {active === "visit-notes" && (
             <VisitNotesSection complexes={complexes} />
           )}
@@ -1172,7 +1166,7 @@ function CustomSection({ item }: CustomSectionProps) {
 /* ── Mobile bottom nav ─────────────────────── */
 
 const WEDDING_IDS = ["halls", "studios", "dresses", "makeup"];
-const HOUSING_IDS = ["assets", "housing", "housing-routes", "visit-notes"];
+const HOUSING_IDS = ["assets", "housing", "visit-notes"];
 
 interface MobileBottomNavProps {
   active: string;
