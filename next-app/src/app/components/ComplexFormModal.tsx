@@ -5,6 +5,7 @@ import { Complex, SchoolEntry, parseSchools } from "@/data/complexes";
 import TwEmoji from "./ui/TwEmoji";
 import { useAlert, useConfirm } from "./ui/ConfirmModal";
 import { useLoading } from "./ui/LoadingOverlay";
+import { AddressSearchInput, type AddressResult } from "./ui/AddressSearch";
 
 interface Props {
   complex?: Complex | null;
@@ -382,14 +383,30 @@ export default function ComplexFormModal({
                   className={input}
                 />
               </div>
-              {/* 주소 직접 입력 */}
+              {/* 주소 검색 (카카오) */}
               <div>
-                <label className={label}>주소 (도로명)</label>
-                <input
-                  value={fullAddress}
-                  onChange={(e) => setFullAddress(e.target.value)}
-                  placeholder="예: 서울특별시 마포구 월드컵북로 396"
-                  className={input}
+                <label className={label}>주소</label>
+                <AddressSearchInput
+                  value={
+                    fullAddress
+                      ? { roadAddress: fullAddress, jibunAddress: "", lat, lng, city, district, dong }
+                      : null
+                  }
+                  onChange={(r: AddressResult | null) => {
+                    if (!r) {
+                      setLat(undefined);
+                      setLng(undefined);
+                      setFullAddress("");
+                      return;
+                    }
+                    setFullAddress(r.roadAddress || r.jibunAddress || "");
+                    if (r.lat) setLat(r.lat);
+                    if (r.lng) setLng(r.lng);
+                    if (r.city && !city) setCity(r.city);
+                    if (r.district && !district) setDistrict(r.district);
+                    if (r.dong && !dong) setDong(r.dong);
+                  }}
+                  placeholder="주소 검색 (도로명 또는 건물명)"
                 />
               </div>
 

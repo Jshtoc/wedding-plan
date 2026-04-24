@@ -11,6 +11,7 @@ import {
   combinedTotalAssets,
 } from "@/data/assets";
 import TwEmoji from "../ui/TwEmoji";
+import { AddressSearchInput, type AddressResult } from "../ui/AddressSearch";
 
 interface Props {
   initial: PersonAsset[];
@@ -331,15 +332,23 @@ function PersonCard({ asset, onChange, onSave, saving, saved }: PersonCardProps)
                         </svg>
                       </button>
                     </div>
-                    <input
-                      value={wp.address}
-                      onChange={(e) => {
+                    <AddressSearchInput
+                      value={
+                        wp.address
+                          ? { roadAddress: wp.address, jibunAddress: "", lat: wp.lat, lng: wp.lng }
+                          : null
+                      }
+                      onChange={(r: AddressResult | null) => {
                         const next = [...asset.workplaces];
-                        next[idx] = { ...next[idx], address: e.target.value };
+                        next[idx] = {
+                          ...next[idx],
+                          address: r ? (r.roadAddress || r.jibunAddress || "") : "",
+                          lat: r?.lat ?? 0,
+                          lng: r?.lng ?? 0,
+                        };
                         set({ workplaces: next });
                       }}
-                      placeholder="직장 주소 (예: 서울특별시 영등포구 여의대로 24)"
-                      className={input + " !h-9"}
+                      placeholder="직장 주소 검색"
                     />
                   </div>
                 );
