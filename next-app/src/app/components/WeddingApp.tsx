@@ -48,7 +48,8 @@ type FixedSection =
   | "dresses"
   | "makeup"
   | "budget"
-  | "routes";
+  | "routes"
+  | "menu-settings";
 type Section = FixedSection | string;
 type SortType = "default" | "price" | "guests" | "parking";
 
@@ -81,6 +82,7 @@ const ALL_SECTIONS: SectionDef[] = [
   { id: "makeup", label: "메이크업", icon: "💄", subtitle: "메이크업 샵 리스트" },
   { id: "budget", label: "결혼 예산", icon: "💰", subtitle: "항목별 예산 배분 및 관리" },
   { id: "routes", label: "동선", icon: "🗺️", subtitle: "하루 투어 동선 계산" },
+  { id: "menu-settings", label: "메뉴 관리", icon: "⚙️", subtitle: "노출 메뉴 on/off 설정" },
 ];
 
 /** Sidebar navigation structure with groups. */
@@ -106,6 +108,7 @@ const SIDEBAR_NAV: SidebarEntry[] = [
       ),
     },
   },
+  { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
 ];
 
 export default function WeddingApp() {
@@ -146,6 +149,65 @@ export default function WeddingApp() {
   const [sortType, setSortType] = useState<SortType>("default");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const showConfirm = useConfirm();
+
+  // Sections that can never be hidden
+  const ALWAYS_VISIBLE = new Set(["overview", "menu-settings"]);
+
+  const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
+
+  // Load menu settings from server on mount
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.menu_hidden)) {
+          setHiddenSections(new Set(data.menu_hidden as string[]));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const saveHidden = (next: Set<string>) => {
+    fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ menu_hidden: [...next] }),
+    }).catch(() => {});
+  };
+
+  const toggleSection = (id: string) => {
+    if (ALWAYS_VISIBLE.has(id)) return;
+    setHiddenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveHidden(next);
+      return next;
+    });
+  };
+
+  const toggleGroup = (ids: string[]) => {
+    const toggleable = ids.filter((id) => !ALWAYS_VISIBLE.has(id));
+    setHiddenSections((prev) => {
+      const allHidden = toggleable.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allHidden) {
+        toggleable.forEach((id) => next.delete(id));
+      } else {
+        toggleable.forEach((id) => next.add(id));
+      }
+      saveHidden(next);
+      return next;
+    });
+  };
+
+  // If the active section gets hidden, snap back to overview
+  useEffect(() => {
+    if (!ALWAYS_VISIBLE.has(active) && hiddenSections.has(active)) {
+      setActive("overview");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenSections]);
 
   const fetchHalls = useCallback(async () => {
     try {
@@ -451,6 +513,32 @@ export default function WeddingApp() {
     setSidebarOpen(false);
   };
 
+  // Filter sidebar nav entries based on hidden sections
+  const filteredSidebarNav = useMemo<SidebarEntry[]>(() => {
+    const result: SidebarEntry[] = [];
+    for (const entry of SIDEBAR_NAV) {
+      if (entry.kind === "item") {
+        if (ALWAYS_VISIBLE.has(entry.item.id) || !hiddenSections.has(entry.item.id)) {
+          result.push(entry);
+        }
+      } else {
+        const visibleItems = entry.group.items.filter((s) => !hiddenSections.has(s.id));
+        if (visibleItems.length > 0) {
+          result.push({ kind: "group", group: { ...entry.group, items: visibleItems } });
+        }
+      }
+    }
+    return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenSections]);
+
+  // Sections visible in mobile menu grid
+  const visibleFixedSections = useMemo(
+    () => ALL_SECTIONS.filter((s) => ALWAYS_VISIBLE.has(s.id) || !hiddenSections.has(s.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hiddenSections]
+  );
+
   // Resolve the currently-active section's metadata. For fixed ids we
   // look it up in SECTIONS; for custom ids we synthesize metadata
   // from the matching budget row.
@@ -483,7 +571,7 @@ export default function WeddingApp() {
 
         {/* Nav items */}
         <nav className="flex-1 px-3 pb-4 space-y-1 overflow-y-auto">
-          {SIDEBAR_NAV.map((entry, idx) => {
+          {filteredSidebarNav.map((entry, idx) => {
             if (entry.kind === "item") {
               const s = entry.item;
               const isActive = s.id === active;
@@ -670,7 +758,7 @@ export default function WeddingApp() {
               All Sections
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {ALL_SECTIONS.map((s) => {
+              {visibleFixedSections.map((s) => {
                 const isActive = s.id === active;
                 return (
                   <button
@@ -807,6 +895,15 @@ export default function WeddingApp() {
             <VisitNotesSection complexes={complexes} />
           )}
           {active === "routes" && <RoutesStubSection />}
+          {active === "menu-settings" && (
+            <MenuManageSection
+              sections={ALL_SECTIONS.filter((s) => s.id !== "menu-settings")}
+              hiddenSections={hiddenSections}
+              alwaysVisible={ALWAYS_VISIBLE}
+              onToggle={toggleSection}
+              onToggleGroup={toggleGroup}
+            />
+          )}
           {isCustomCategory(active) &&
             (() => {
               const item = customSections.find((c) => c.category === active);
@@ -1347,6 +1444,145 @@ function SkeletonGrid() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ── MenuManageSection ─────────────────────── */
+
+interface MenuManageSectionProps {
+  sections: SectionDef[];
+  hiddenSections: Set<string>;
+  alwaysVisible: Set<string>;
+  onToggle: (id: string) => void;
+  onToggleGroup: (ids: string[]) => void;
+}
+
+const GROUP_LABELS: Record<string, string> = {
+  overview: "기본",
+  assets: "부동산",
+  housing: "부동산",
+  "visit-notes": "부동산",
+  halls: "예식",
+  studios: "예식",
+  dresses: "예식",
+  makeup: "예식",
+  budget: "예식",
+  routes: "예식",
+};
+
+const GROUP_ICONS: Record<string, string> = {
+  "기본": "📊",
+  "부동산": "🏠",
+  "예식": "💍",
+};
+
+function Toggle({ on, locked, label, onToggle }: { on: boolean; locked?: boolean; label: string; onToggle: () => void }) {
+  if (locked) {
+    return (
+      <span className="flex-shrink-0 text-[10px] font-medium text-mint/60 bg-mint/10 border border-mint/20 rounded-full px-2.5 py-1 whitespace-nowrap">
+        항상 표시
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={on ? `${label} 숨기기` : `${label} 표시`}
+      className={
+        "flex-shrink-0 relative w-11 h-6 rounded-full transition-colors duration-200 " +
+        (on ? "bg-mint" : "bg-white/10 border border-white/15")
+      }
+    >
+      <span
+        className={
+          "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200 " +
+          (on ? "left-[22px]" : "left-0.5")
+        }
+      />
+    </button>
+  );
+}
+
+function MenuManageSection({
+  sections,
+  hiddenSections,
+  alwaysVisible,
+  onToggle,
+  onToggleGroup,
+}: MenuManageSectionProps) {
+  const groups = ["부동산", "예식"];
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-white/50">
+        사이드바 및 메뉴에서 노출할 항목을 설정합니다. 그룹을 끄면 하위 항목이 모두 숨겨집니다.
+      </p>
+      {groups.map((groupLabel) => {
+        const groupSections = sections.filter(
+          (s) => (GROUP_LABELS[s.id] ?? "기본") === groupLabel
+        );
+        if (groupSections.length === 0) return null;
+
+        const toggleable = groupSections.filter((s) => !alwaysVisible.has(s.id));
+        const groupLocked = toggleable.length === 0;
+        const allHidden = !groupLocked && toggleable.every((s) => hiddenSections.has(s.id));
+        const groupOn = !allHidden;
+
+        return (
+          <div key={groupLabel}>
+            {/* Group header row */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-2xl bg-white/[0.07] border border-white/15 mb-2">
+              <div className="flex items-center gap-3">
+                <TwEmoji emoji={GROUP_ICONS[groupLabel] ?? "📁"} size={20} />
+                <span className="text-sm font-semibold text-white">{groupLabel}</span>
+              </div>
+              <Toggle
+                on={groupOn}
+                locked={groupLocked}
+                label={groupLabel}
+                onToggle={() => onToggleGroup(groupSections.map((s) => s.id))}
+              />
+            </div>
+
+            {/* Sub-items */}
+            <div className={
+              "space-y-1.5 pl-3 transition-opacity duration-200 " +
+              (groupOn ? "opacity-100" : "opacity-40 pointer-events-none")
+            }>
+              {groupSections.map((s) => {
+                const locked = alwaysVisible.has(s.id);
+                const isOn = locked || !hiddenSections.has(s.id);
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-xl bg-white/[0.03] border border-white/8"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TwEmoji emoji={s.icon} size={16} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-white leading-tight">
+                          {s.label}
+                        </div>
+                        <div className="text-[11px] text-white/40 mt-0.5 truncate">
+                          {s.subtitle}
+                        </div>
+                      </div>
+                    </div>
+                    <Toggle
+                      on={isOn}
+                      locked={locked}
+                      label={s.label}
+                      onToggle={() => onToggle(s.id)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -59,7 +59,7 @@ function LoginForm() {
           <h1 className="text-[19px] font-semibold text-white mb-1.5 tracking-tight">
             우리들의 웨딩 플랜
           </h1>
-          <p className="text-[13px] text-white/50">로그인하고 계속하기</p>
+          <p className="text-[13px] text-mint/50">We Wedding Plan</p>
         </div>
 
         {/* ID */}
