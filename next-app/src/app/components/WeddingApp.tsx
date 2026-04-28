@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   WeddingHall,
   TRANSPORT_META,
@@ -111,6 +111,9 @@ const SIDEBAR_NAV: SidebarEntry[] = [
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
 ];
 
+/** Section IDs that can never be hidden by the user. */
+const ALWAYS_VISIBLE = new Set(["overview", "menu-settings"]);
+
 export default function WeddingApp() {
   // Seed `active` from ?section= so shared links deep-link into a
   // specific tab (e.g. the 임장 동선 share URL). Everything else stays
@@ -150,43 +153,50 @@ export default function WeddingApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const showConfirm = useConfirm();
 
-  // Sections that can never be hidden
-  const ALWAYS_VISIBLE = new Set(["overview", "menu-settings"]);
-
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
+  // Tracks whether the initial settings load has completed — prevents
+  // the save effect from firing during the initial fetch.
+  const settingsLoaded = useRef(false);
 
-  // Load menu settings from server on mount
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data.menu_hidden)) {
-          setHiddenSections(new Set(data.menu_hidden as string[]));
-        }
-      })
-      .catch(() => {});
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.menu_hidden)) {
+        setHiddenSections(new Set(data.menu_hidden as string[]));
+      }
+    } catch {
+      // silent — menu visibility falls back to showing everything
+    } finally {
+      settingsLoaded.current = true;
+    }
   }, []);
 
-  const saveHidden = (next: Set<string>) => {
+  useEffect(() => { fetchSettings(); }, [fetchSettings]);
+
+  // Persist hidden sections to server whenever they change (after initial load).
+  // Runs in an effect so the fetch is never inside a setState updater,
+  // which avoids duplicate calls in React StrictMode.
+  useEffect(() => {
+    if (!settingsLoaded.current) return;
     fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ menu_hidden: [...next] }),
+      body: JSON.stringify({ menu_hidden: [...hiddenSections] }),
     }).catch(() => {});
-  };
+  }, [hiddenSections]);
 
-  const toggleSection = (id: string) => {
+  const toggleSection = useCallback((id: string) => {
     if (ALWAYS_VISIBLE.has(id)) return;
     setHiddenSections((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      saveHidden(next);
       return next;
     });
-  };
+  }, []);
 
-  const toggleGroup = (ids: string[]) => {
+  const toggleGroup = useCallback((ids: string[]) => {
     const toggleable = ids.filter((id) => !ALWAYS_VISIBLE.has(id));
     setHiddenSections((prev) => {
       const allHidden = toggleable.every((id) => prev.has(id));
@@ -196,18 +206,16 @@ export default function WeddingApp() {
       } else {
         toggleable.forEach((id) => next.add(id));
       }
-      saveHidden(next);
       return next;
     });
-  };
+  }, []);
 
   // If the active section gets hidden, snap back to overview
   useEffect(() => {
     if (!ALWAYS_VISIBLE.has(active) && hiddenSections.has(active)) {
       setActive("overview");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hiddenSections]);
+  }, [active, hiddenSections]);
 
   const fetchHalls = useCallback(async () => {
     try {
@@ -529,13 +537,11 @@ export default function WeddingApp() {
       }
     }
     return result;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hiddenSections]);
 
   // Sections visible in mobile menu grid
   const visibleFixedSections = useMemo(
     () => ALL_SECTIONS.filter((s) => ALWAYS_VISIBLE.has(s.id) || !hiddenSections.has(s.id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hiddenSections]
   );
 
@@ -897,7 +903,7 @@ export default function WeddingApp() {
           {active === "routes" && <RoutesStubSection />}
           {active === "menu-settings" && (
             <MenuManageSection
-              sections={ALL_SECTIONS.filter((s) => s.id !== "menu-settings")}
+              sections={ALL_SECTIONS.filter((s) => s.id !== "menu-settings" && s.id !== "overview")}
               hiddenSections={hiddenSections}
               alwaysVisible={ALWAYS_VISIBLE}
               onToggle={toggleSection}
@@ -1459,7 +1465,6 @@ interface MenuManageSectionProps {
 }
 
 const GROUP_LABELS: Record<string, string> = {
-  overview: "기본",
   assets: "부동산",
   housing: "부동산",
   "visit-notes": "부동산",

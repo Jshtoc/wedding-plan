@@ -696,3 +696,28 @@ export async function deleteVisitNote(
     .eq("group_id", groupId);
   if (error) throw error;
 }
+
+/* ─────────────── Settings ─────────────── */
+
+export async function getSettings(groupId: string): Promise<{ menu_hidden: string[] }> {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("menu_hidden")
+    .eq("group_id", groupId)
+    .maybeSingle();
+  if (error) throw error;
+  return { menu_hidden: data?.menu_hidden ?? [] };
+}
+
+export async function upsertSettings(
+  groupId: string,
+  menuHidden: string[]
+): Promise<void> {
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { group_id: groupId, menu_hidden: menuHidden, updated_at: new Date().toISOString() },
+      { onConflict: "group_id" }
+    );
+  if (error) throw error;
+}
