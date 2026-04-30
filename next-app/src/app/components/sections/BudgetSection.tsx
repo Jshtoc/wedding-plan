@@ -15,6 +15,7 @@ import {
 } from "@/data/budgets";
 import TwEmoji from "../ui/TwEmoji";
 import BudgetDonutChart from "../ui/BudgetDonutChart";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface Props {
   /** Initial budgets fetched by the parent. Component owns its own
@@ -95,7 +96,6 @@ export default function BudgetSection({ initial, onSaved }: Props) {
     totalBudgetTarget(initial)
   );
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [remoteUpdateCount, setRemoteUpdateCount] = useState(0);
   // Tracks which custom row (by category id) currently has the icon
@@ -236,14 +236,12 @@ export default function BudgetSection({ initial, onSaved }: Props) {
           : p
       )
     );
-    setSaveError(null);
   };
 
   const setLabel = (category: string, label: string) => {
     setDraft((prev) =>
       prev.map((p) => (p.category === category ? { ...p, label } : p))
     );
-    setSaveError(null);
   };
 
   const setIcon = (category: string, icon: string) => {
@@ -251,7 +249,6 @@ export default function BudgetSection({ initial, onSaved }: Props) {
       prev.map((p) => (p.category === category ? { ...p, icon } : p))
     );
     setIconPickerFor(null);
-    setSaveError(null);
   };
 
   const addCustomRow = () => {
@@ -260,7 +257,6 @@ export default function BudgetSection({ initial, onSaved }: Props) {
       ...prev,
       { category: id, budget: 0, label: "", icon: "📌" },
     ]);
-    setSaveError(null);
   };
 
   // ── Edit mode helpers ────────────────────────────
@@ -326,12 +322,10 @@ export default function BudgetSection({ initial, onSaved }: Props) {
     if (iconPickerFor && ids.includes(iconPickerFor)) setIconPickerFor(null);
     setSelectedIds(new Set());
     setConfirmDelete(null);
-    setSaveError(null);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveError(null);
     try {
       // Append the pseudo-category `total` to the payload. Server
       // validator accepts it and db.upsertBudgets stores it alongside
@@ -340,16 +334,11 @@ export default function BudgetSection({ initial, onSaved }: Props) {
         ...draft.map((d) => ({ ...d })),
         { category: "total", budget: Math.max(0, Math.floor(totalTarget) || 0) },
       ];
-      const res = await fetch("/api/budgets", {
+      await apiFetch("/api/budgets", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: payload }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setSaveError(data.error || "저장에 실패했습니다.");
-        return;
-      }
       // Drop unsaved empty-labelled custom rows from local draft too,
       // mirroring the server's filter (so they don't resurrect on the
       // next remote merge comparison).
@@ -365,8 +354,8 @@ export default function BudgetSection({ initial, onSaved }: Props) {
         ...cleanedDraft,
         { category: "total", budget: totalTarget },
       ]);
-    } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : "네트워크 오류");
+    } catch {
+      // apiFetch already dispatched wwp:api-error — root handler shows the modal
     } finally {
       setSaving(false);
     }
@@ -377,7 +366,6 @@ export default function BudgetSection({ initial, onSaved }: Props) {
     // updated by another user since this edit started).
     setDraft(Array.from(lastBaseline.current.values()).map((b) => ({ ...b })));
     setTotalTarget(lastTotalBaseline.current);
-    setSaveError(null);
     setSavedAt(null);
     setRemoteUpdateCount(0);
   };
@@ -425,7 +413,6 @@ export default function BudgetSection({ initial, onSaved }: Props) {
                 onChange={(e) => {
                   const v = parseInt(e.target.value, 10);
                   setTotalTarget(Number.isFinite(v) ? Math.max(0, v) : 0);
-                  setSaveError(null);
                 }}
                 placeholder="0"
                 className="w-32 sm:w-40 h-11 pl-3.5 pr-11 text-right text-base font-semibold bg-white/[0.06] border border-white/10 rounded-lg text-white placeholder:text-white/20 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/20 transition-all tabular-nums"
@@ -784,9 +771,7 @@ export default function BudgetSection({ initial, onSaved }: Props) {
                 상대가 방금 업데이트했어요
               </span>
             )}
-            {saveError ? (
-              <span className="text-red-300">{saveError}</span>
-            ) : savedAt ? (
+            {savedAt ? (
               <span className="text-mint/70">
                 {savedAt.toLocaleTimeString("ko-KR", {
                   hour: "2-digit",

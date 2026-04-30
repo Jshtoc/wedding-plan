@@ -30,7 +30,8 @@ import HousingSection from "./sections/HousingSection";
 import VisitNotesSection from "./sections/VisitNotesSection";
 import AssetsSection from "./sections/AssetsSection";
 import TwEmoji from "./ui/TwEmoji";
-import { useConfirm } from "./ui/ConfirmModal";
+import { useAlert, useConfirm } from "./ui/ConfirmModal";
+import { API_ERROR_EVENT } from "@/lib/apiFetch";
 import OverviewSection from "./sections/OverviewSection";
 import BudgetSection from "./sections/BudgetSection";
 
@@ -151,7 +152,19 @@ export default function WeddingApp() {
   const [assets, setAssets] = useState<PersonAsset[]>([]);
   const [sortType, setSortType] = useState<SortType>("default");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const showAlert = useAlert();
   const showConfirm = useConfirm();
+
+  // Global API error handler — shows any wwp:api-error event in the
+  // common alert modal. apiFetch dispatches this on every non-ok, non-401 response.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<{ message: string }>).detail?.message ?? "알 수 없는 오류";
+      showAlert(msg, { title: "오류", icon: "⚠️" });
+    };
+    window.addEventListener(API_ERROR_EVENT, handler);
+    return () => window.removeEventListener(API_ERROR_EVENT, handler);
+  }, [showAlert]);
 
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
   // Tracks whether the initial settings load has completed — prevents
