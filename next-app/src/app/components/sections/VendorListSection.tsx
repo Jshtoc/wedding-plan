@@ -18,6 +18,7 @@ interface Props {
 }
 
 type SortType = "default" | "price" | "name";
+type ViewMode = "expanded" | "summary";
 
 export default function VendorListSection({
   category,
@@ -27,6 +28,7 @@ export default function VendorListSection({
 }: Props) {
   const meta = VENDOR_CATEGORIES[category];
   const [sortType, setSortType] = useState<SortType>("default");
+  const [viewMode, setViewMode] = useState<ViewMode>("expanded");
   // Dress-only sub-tab. Ignored for studio/makeup.
   const [dressTab, setDressTab] = useState<DressTarget>("bride");
 
@@ -93,34 +95,38 @@ export default function VendorListSection({
         </div>
       )}
 
-      {/* Sort bar */}
-      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none">
-        {sortOptions.map((opt) => (
-          <button
-            key={opt.type}
-            type="button"
-            onClick={() => setSortType(opt.type)}
-            className={
-              "flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-colors " +
-              (sortType === opt.type
-                ? "bg-mint text-gray-900"
-                : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
-            }
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Sort bar + view toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+          {sortOptions.map((opt) => (
+            <button
+              key={opt.type}
+              type="button"
+              onClick={() => setSortType(opt.type)}
+              className={
+                "flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-colors " +
+                (sortType === opt.type
+                  ? "bg-mint text-gray-900"
+                  : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <ViewToggle value={viewMode} onChange={setViewMode} />
       </div>
 
       {sorted.length === 0 ? (
         <SampleEmptyState category={category} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={`grid gap-3 ${viewMode === "summary" ? "sm:grid-cols-2" : ""}`}>
           {sorted.map((v) => (
             <VendorCard
               key={v.id}
               vendor={v}
               categoryIcon={meta.icon}
+              expanded={viewMode === "expanded"}
               onEdit={onEdit}
             />
           ))}
@@ -130,65 +136,115 @@ export default function VendorListSection({
   );
 }
 
+/* ── View toggle ────────────────────────────────────────────── */
+
+interface ViewToggleProps {
+  value: ViewMode;
+  onChange: (v: ViewMode) => void;
+}
+
+function ViewToggle({ value, onChange }: ViewToggleProps) {
+  return (
+    <div className="flex-shrink-0 inline-flex p-0.5 bg-white/[0.04] border border-white/10 rounded-lg">
+      <button
+        type="button"
+        onClick={() => onChange("summary")}
+        aria-label="요약본 보기"
+        title="요약본 보기"
+        className={
+          "flex items-center justify-center w-8 h-7 rounded-md transition-colors " +
+          (value === "summary" ? "bg-mint/20 text-mint" : "text-white/40 hover:text-white/70")
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="1" width="4" height="12" rx="1" />
+          <rect x="7" y="1" width="4" height="12" rx="1" />
+          <rect x="12" y="1" width="1" height="12" rx="0.5" className="opacity-0" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("expanded")}
+        aria-label="펼쳐서 보기"
+        title="펼쳐서 보기"
+        className={
+          "flex items-center justify-center w-8 h-7 rounded-md transition-colors " +
+          (value === "expanded" ? "bg-mint/20 text-mint" : "text-white/40 hover:text-white/70")
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="1" width="5.5" height="5.5" rx="1" />
+          <rect x="7.5" y="1" width="5.5" height="5.5" rx="1" />
+          <rect x="1" y="7.5" width="5.5" height="5.5" rx="1" />
+          <rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 /* ── Vendor card ────────────────────────────────────────────── */
 
 interface VendorCardProps {
   vendor: Vendor;
   categoryIcon: string;
+  expanded: boolean;
   onEdit: (vendor: Vendor) => void;
 }
 
-function VendorCard({ vendor, categoryIcon, onEdit }: VendorCardProps) {
+function VendorCard({ vendor, categoryIcon, expanded, onEdit }: VendorCardProps) {
   return (
     <button
       type="button"
       onClick={() => onEdit(vendor)}
-      className="group w-full text-left bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
+      className="group w-full text-left bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden transition-colors hover:border-white/20 hover:bg-white/[0.06]"
     >
-      <div className="flex items-start gap-3 mb-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-mint/10 border border-mint/20 flex items-center justify-center">
-          <TwEmoji emoji={categoryIcon} size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-white leading-tight truncate">
-            {vendor.name}
-          </h3>
-          {vendor.sub && (
-            <p className="text-[11px] text-white/50 mt-1 truncate">
-              {vendor.sub}
-            </p>
+      <div className="flex min-h-0">
+        {/* Left — main info */}
+        <div className="flex-1 min-w-0 p-4">
+          <div className="flex items-start gap-3 mb-2">
+            <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-mint/10 border border-mint/20 flex items-center justify-center">
+              <TwEmoji emoji={categoryIcon} size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-[13px] font-semibold text-white leading-tight truncate">
+                {vendor.name}
+              </h3>
+              {vendor.sub && (
+                <p className="text-[10px] text-white/50 mt-0.5 truncate">
+                  {vendor.sub}
+                </p>
+              )}
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="text-[9px] text-white/40">예상</div>
+              <div className="text-[13px] font-semibold text-mint tabular-nums">
+                {vendor.price > 0 ? `${vendor.price.toLocaleString()}만` : "—"}
+              </div>
+            </div>
+          </div>
+          {/* In summary mode, show note inline below main info */}
+          {!expanded && vendor.note && (
+            <p className="text-[11px] text-white/50 leading-relaxed line-clamp-3 mt-2">{vendor.note}</p>
           )}
         </div>
-        <div className="text-right flex-shrink-0">
-          <div className="text-[10px] text-white/40">예상</div>
-          <div className="text-sm font-semibold text-mint tabular-nums">
-            {vendor.price > 0 ? `${vendor.price.toLocaleString()}만` : "—"}
+
+        {/* Right — memo panel (expanded only) */}
+        {expanded && vendor.note && (
+          <div className="w-[44%] flex-shrink-0 border-l border-white/10 p-4 bg-white/[0.02]">
+            <div className="text-[9px] font-semibold text-white/30 uppercase tracking-[0.15em] mb-1.5">
+              메모
+            </div>
+            <p className="text-[11px] text-white/60 leading-relaxed line-clamp-5">
+              {vendor.note}
+            </p>
           </div>
-        </div>
-      </div>
-
-      {vendor.note && (
-        <div className="text-[11px] text-white/50 leading-relaxed line-clamp-3">
-          {vendor.note}
-        </div>
-      )}
-
-      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-end text-[10px] text-white/30 group-hover:text-mint/70 transition-colors">
-        <span className="inline-flex items-center gap-1">
-          클릭하여 편집
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 5 L8 5 M5 2 L8 5 L5 8" />
-          </svg>
-        </span>
+        )}
+        {expanded && !vendor.note && (
+          <div className="w-[44%] flex-shrink-0 border-l border-white/10 p-4 bg-white/[0.02] flex items-center justify-center">
+            <span className="text-[10px] text-white/20">메모 없음</span>
+          </div>
+        )}
       </div>
     </button>
   );
@@ -249,12 +305,13 @@ function SampleEmptyState({ category }: { category: VendorCategory }) {
   const sample = SAMPLE_VENDORS[category];
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3">
         <div className="relative pointer-events-none select-none" aria-hidden="true">
           <div className="rounded-2xl sample-glow">
             <VendorCard
               vendor={sample}
               categoryIcon={meta.icon}
+              expanded={true}
               onEdit={() => {}}
             />
           </div>

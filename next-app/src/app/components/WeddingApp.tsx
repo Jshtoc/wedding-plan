@@ -1015,6 +1015,8 @@ interface HallsSectionProps {
   onDelete: (id: number) => void;
 }
 
+type HallViewMode = "expanded" | "summary";
+
 function HallsSection({
   halls,
   budgets,
@@ -1025,6 +1027,8 @@ function HallsSection({
   onEdit,
   onDelete,
 }: HallsSectionProps) {
+  const [viewMode, setViewMode] = useState<HallViewMode>("expanded");
+
   const sortOptions: { type: SortType; label: string }[] = [
     { type: "default", label: "기본" },
     { type: "price", label: "가격 낮은순" },
@@ -1060,7 +1064,7 @@ function HallsSection({
     };
     return (
       <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3">
           <SampleOverlay>
             <DarkHallCard
               hall={sampleHall}
@@ -1079,36 +1083,194 @@ function HallsSection({
 
   return (
     <div>
-      {/* Sort bar */}
-      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none">
-        {sortOptions.map((opt) => (
-          <button
-            key={opt.type}
-            type="button"
-            onClick={() => onSortChange(opt.type)}
-            className={
-              "flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-colors " +
-              (sortType === opt.type
-                ? "bg-mint text-gray-900"
-                : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
-            }
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Sort bar + view toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+          {sortOptions.map((opt) => (
+            <button
+              key={opt.type}
+              type="button"
+              onClick={() => onSortChange(opt.type)}
+              className={
+                "flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-colors " +
+                (sortType === opt.type
+                  ? "bg-mint text-gray-900"
+                  : "bg-white/[0.04] text-white/60 border border-white/10 hover:bg-white/[0.08] hover:text-white")
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <HallViewToggle value={viewMode} onChange={setViewMode} />
       </div>
 
-      {/* Card grid */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {halls.map((hall) => (
-          <DarkHallCard
-            key={hall.id}
-            hall={hall}
-            hallBudget={hallBudget}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
+      {viewMode === "summary" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {halls.map((hall) => (
+            <DarkHallCardSummary
+              key={hall.id}
+              hall={hall}
+              hallBudget={hallBudget}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {halls.map((hall) => (
+            <DarkHallCard
+              key={hall.id}
+              hall={hall}
+              hallBudget={hallBudget}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface HallViewToggleProps {
+  value: HallViewMode;
+  onChange: (v: HallViewMode) => void;
+}
+
+function HallViewToggle({ value, onChange }: HallViewToggleProps) {
+  return (
+    <div className="flex-shrink-0 inline-flex p-0.5 bg-white/[0.04] border border-white/10 rounded-lg">
+      <button
+        type="button"
+        onClick={() => onChange("summary")}
+        aria-label="요약본 보기"
+        title="요약본 보기"
+        className={
+          "flex items-center justify-center w-8 h-7 rounded-md transition-colors " +
+          (value === "summary" ? "bg-mint/20 text-mint" : "text-white/40 hover:text-white/70")
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="1" width="3.5" height="12" rx="1" />
+          <rect x="6" y="1" width="3.5" height="12" rx="1" />
+          <rect x="10.5" y="1" width="2.5" height="12" rx="1" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("expanded")}
+        aria-label="펼쳐서 보기"
+        title="펼쳐서 보기"
+        className={
+          "flex items-center justify-center w-8 h-7 rounded-md transition-colors " +
+          (value === "expanded" ? "bg-mint/20 text-mint" : "text-white/40 hover:text-white/70")
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="1" width="5.5" height="5.5" rx="1" />
+          <rect x="7.5" y="1" width="5.5" height="5.5" rx="1" />
+          <rect x="1" y="7.5" width="5.5" height="5.5" rx="1" />
+          <rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+interface DarkHallCardSummaryProps {
+  hall: WeddingHall;
+  hallBudget: number;
+  onEdit: (h: WeddingHall) => void;
+  onDelete: (id: number) => void;
+}
+
+function DarkHallCardSummary({ hall, hallBudget, onEdit, onDelete }: DarkHallCardSummaryProps) {
+  const priceLevel = computePriceLevel(hall.price, hallBudget);
+  const dotColor =
+    priceLevel === "ok" ? "bg-emerald-400" :
+    priceLevel === "warn" ? "bg-amber-400" :
+    priceLevel === "over" ? "bg-red-400" : "bg-white/20";
+  const priceColor =
+    priceLevel === "ok" ? "text-emerald-300" :
+    priceLevel === "warn" ? "text-amber-300" :
+    priceLevel === "over" ? "text-red-300" : "text-white";
+
+  return (
+    <div className="group bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 transition-colors hover:border-white/20">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-white leading-tight truncate">
+            {hall.name}
+          </h3>
+          {hall.sub && (
+            <p className="text-[11px] text-white/50 mt-1 truncate">{hall.sub}</p>
+          )}
+        </div>
+        <div className="text-right flex-shrink-0 flex items-center gap-2">
+          {priceLevel && (
+            <span className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`} aria-hidden="true" />
+          )}
+          <div>
+            <div className="text-[10px] text-white/40">예상</div>
+            <div className={`text-sm font-semibold tabular-nums ${priceColor}`}>
+              {hall.price > 0 ? `${hall.price.toLocaleString()}만` : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/60 mb-3">
+        {hall.guests > 0 && (
+          <div className="flex items-center gap-1.5">
+            <TwEmoji emoji="👥" size={12} />
+            <span className="tabular-nums">보증 {hall.guests.toLocaleString()}명</span>
+          </div>
+        )}
+        {hall.parking > 0 && (
+          <div className="flex items-center gap-1.5">
+            <TwEmoji emoji="🅿️" size={12} />
+            <span className="tabular-nums">주차 {hall.parking.toLocaleString()}대</span>
+          </div>
+        )}
+      </div>
+
+      {hall.transport.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {TRANSPORT_META.filter((t) => hall.transport.includes(t.id)).map((t) => (
+            <span
+              key={t.id}
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-mint/10 border border-mint/20 text-mint/90"
+            >
+              <TwEmoji emoji={t.icon} size={11} />
+              {t.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {hall.note && (
+        <div className="text-[11px] text-white/50 leading-relaxed line-clamp-3 mb-4">
+          {hall.note}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onEdit(hall)}
+          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/[0.1] transition-colors"
+        >
+          <TwEmoji emoji="✏️" size={12} /> 수정
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(hall.id)}
+          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-red-500/10 border border-red-400/20 text-xs text-red-300 hover:bg-red-500/20 transition-colors"
+        >
+          <TwEmoji emoji="🗑️" size={12} /> 삭제
+        </button>
       </div>
     </div>
   );
@@ -1148,95 +1310,102 @@ function DarkHallCard({
           : "bg-white/20";
 
   return (
-    <div className="group bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-5 transition-colors hover:border-white/20">
-      {/* Header row — name + price */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-white leading-tight truncate">
-            {hall.name}
-          </h3>
-          {hall.sub && (
-            <p className="text-[11px] text-white/50 mt-1 truncate">
-              {hall.sub}
-            </p>
-          )}
-        </div>
-        <div className="text-right flex-shrink-0 flex items-center gap-2">
-          {priceLevel && (
-            <span
-              className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`}
-              aria-hidden="true"
-            />
-          )}
-          <div>
-            <div className="text-[10px] text-white/40">예상</div>
-            <div className={`text-sm font-semibold tabular-nums ${priceColor}`}>
-              {hall.price > 0 ? `${hall.price.toLocaleString()}만` : "-"}
+    <div className="group bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden transition-colors hover:border-white/20">
+      <div className="flex min-h-0">
+        {/* Left — main info */}
+        <div className="flex-1 min-w-0 p-4">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="min-w-0">
+              <h3 className="text-[13px] font-semibold text-white leading-tight truncate">
+                {hall.name}
+              </h3>
+              {hall.sub && (
+                <p className="text-[10px] text-white/50 mt-0.5 truncate">
+                  {hall.sub}
+                </p>
+              )}
+            </div>
+            <div className="text-right flex-shrink-0 flex items-center gap-1.5">
+              {priceLevel && (
+                <span
+                  className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`}
+                  aria-hidden="true"
+                />
+              )}
+              <div>
+                <div className="text-[9px] text-white/40">예상</div>
+                <div className={`text-[13px] font-semibold tabular-nums ${priceColor}`}>
+                  {hall.price > 0 ? `${hall.price.toLocaleString()}만` : "—"}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Info strip — guests / parking */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/60 mb-3">
-        {hall.guests > 0 && (
-          <div className="flex items-center gap-1.5">
-            <TwEmoji emoji="👥" size={12} />
-            <span className="tabular-nums">
-              보증 {hall.guests.toLocaleString()}명
-            </span>
+          {/* Info strip */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/60 mb-2">
+            {hall.guests > 0 && (
+              <div className="flex items-center gap-1">
+                <TwEmoji emoji="👥" size={11} />
+                <span className="tabular-nums">보증 {hall.guests.toLocaleString()}명</span>
+              </div>
+            )}
+            {hall.parking > 0 && (
+              <div className="flex items-center gap-1">
+                <TwEmoji emoji="🅿️" size={11} />
+                <span className="tabular-nums">주차 {hall.parking.toLocaleString()}대</span>
+              </div>
+            )}
           </div>
-        )}
-        {hall.parking > 0 && (
-          <div className="flex items-center gap-1.5">
-            <TwEmoji emoji="🅿️" size={12} />
-            <span className="tabular-nums">
-              주차 {hall.parking.toLocaleString()}대
-            </span>
-          </div>
-        )}
-      </div>
 
-      {/* Transport pills */}
-      {hall.transport.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {TRANSPORT_META.filter((t) => hall.transport.includes(t.id)).map(
-            (t) => (
-              <span
-                key={t.id}
-                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-mint/10 border border-mint/20 text-mint/90"
-              >
-                <TwEmoji emoji={t.icon} size={11} />
-                {t.label}
-              </span>
-            )
+          {/* Transport pills */}
+          {hall.transport.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {TRANSPORT_META.filter((t) => hall.transport.includes(t.id)).map((t) => (
+                <span
+                  key={t.id}
+                  className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-mint/10 border border-mint/20 text-mint/90"
+                >
+                  <TwEmoji emoji={t.icon} size={10} />
+                  {t.label}
+                </span>
+              ))}
+            </div>
           )}
-        </div>
-      )}
 
-      {/* Note */}
-      {hall.note && (
-        <div className="text-[11px] text-white/50 leading-relaxed line-clamp-3 mb-4">
-          {hall.note}
+          {/* Actions */}
+          <div className="flex gap-1.5 mt-3">
+            <button
+              type="button"
+              onClick={() => onEdit(hall)}
+              className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] text-white/70 hover:text-white hover:bg-white/[0.1] transition-colors"
+            >
+              <TwEmoji emoji="✏️" size={11} /> 수정
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(hall.id)}
+              className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-red-500/10 border border-red-400/20 text-[11px] text-red-300 hover:bg-red-500/20 transition-colors"
+            >
+              <TwEmoji emoji="🗑️" size={11} /> 삭제
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onEdit(hall)}
-          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/[0.1] transition-colors"
-        >
-          <TwEmoji emoji="✏️" size={12} /> 수정
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(hall.id)}
-          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-red-500/10 border border-red-400/20 text-xs text-red-300 hover:bg-red-500/20 transition-colors"
-        >
-          <TwEmoji emoji="🗑️" size={12} /> 삭제
-        </button>
+        {/* Right — memo panel */}
+        {hall.note ? (
+          <div className="w-[44%] flex-shrink-0 border-l border-white/10 p-4 bg-white/[0.02]">
+            <div className="text-[9px] font-semibold text-white/30 uppercase tracking-[0.15em] mb-1.5">
+              메모
+            </div>
+            <p className="text-[11px] text-white/60 leading-relaxed line-clamp-5">
+              {hall.note}
+            </p>
+          </div>
+        ) : (
+          <div className="w-[44%] flex-shrink-0 border-l border-white/10 p-4 bg-white/[0.02] flex items-center justify-center">
+            <span className="text-[10px] text-white/20">메모 없음</span>
+          </div>
+        )}
       </div>
     </div>
   );
