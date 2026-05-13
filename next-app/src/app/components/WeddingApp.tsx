@@ -749,6 +749,7 @@ export default function WeddingApp() {
         onSelect={handleSelectSection}
         menuOpen={mobileMenuOpen}
         onMenuToggle={() => setMobileMenuOpen((v) => !v)}
+        onLogout={handleLogout}
       />
 
       {/* ── Mobile menu sheet ──────────────── */}
@@ -1450,6 +1451,7 @@ interface MobileBottomNavProps {
   onSelect: (id: string) => void;
   menuOpen: boolean;
   onMenuToggle: () => void;
+  onLogout: () => void;
 }
 
 function MobileBottomNav({
@@ -1457,6 +1459,7 @@ function MobileBottomNav({
   onSelect,
   menuOpen,
   onMenuToggle,
+  onLogout,
 }: MobileBottomNavProps) {
   const isHome = active === "overview";
   const isWeddingPlan = active === "wedding-plan";
@@ -1528,6 +1531,19 @@ function MobileBottomNav({
           >
             <TwEmoji emoji="💑" size={20} />
             <span className="text-[9px] font-medium">웨딩플랜</span>
+          </button>
+
+          {/* 로그아웃 */}
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex flex-col items-center gap-1 py-2 px-3 text-white/30 active:text-white/60 transition-colors"
+            aria-label="로그아웃"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 16l4-4m0 0l-4-4m4 4H9m4 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            <span className="text-[9px] font-medium">로그아웃</span>
           </button>
         </div>
       </div>

@@ -317,6 +317,7 @@ function ChecklistTab({
 
   const toggle = (id: string) => {
     setChecked((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSaved(false);
   };
 
   const setDetail = (id: string, field: keyof ItemDetail, raw: string) => {
@@ -325,6 +326,7 @@ function ChecklistTab({
       ...prev,
       [id]: { ...{ vendor: "", estimated: "", confirmed: "" }, ...prev[id], [field]: val },
     }));
+    setSaved(false);
   };
 
   const overBudget = budgetGoal > 0 && totalConfirmed > budgetGoal;
