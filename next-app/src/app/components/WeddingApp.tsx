@@ -34,6 +34,7 @@ import { useAlert, useConfirm } from "./ui/ConfirmModal";
 import { API_ERROR_EVENT } from "@/lib/apiFetch";
 import OverviewSection from "./sections/OverviewSection";
 import BudgetSection from "./sections/BudgetSection";
+import WeddingPlanSection from "./sections/WeddingPlanSection";
 
 /**
  * Active section id. Fixed ids are the 7 built-in menu items; any
@@ -50,6 +51,7 @@ type FixedSection =
   | "makeup"
   | "budget"
   | "routes"
+  | "wedding-plan"
   | "menu-settings";
 type Section = FixedSection | string;
 type SortType = "default" | "price" | "guests" | "parking";
@@ -83,37 +85,24 @@ const ALL_SECTIONS: SectionDef[] = [
   { id: "makeup", label: "메이크업", icon: "💄", subtitle: "메이크업 샵 리스트" },
   { id: "budget", label: "결혼 예산", icon: "💰", subtitle: "항목별 예산 배분 및 관리" },
   { id: "routes", label: "동선", icon: "🗺️", subtitle: "하루 투어 동선 계산" },
+  { id: "wedding-plan", label: "웨딩 플랜", icon: "💑", subtitle: "웨딩 준비 전체 플랜" },
   { id: "menu-settings", label: "메뉴 관리", icon: "⚙️", subtitle: "노출 메뉴 on/off 설정" },
 ];
 
 /** Sidebar navigation structure with groups. */
 const SIDEBAR_NAV: SidebarEntry[] = [
   { kind: "item", item: ALL_SECTIONS[0] }, // 대시보드
-  {
-    kind: "group",
-    group: {
-      label: "부동산",
-      icon: "🏠",
-      items: ALL_SECTIONS.filter((s) =>
-        ["assets", "housing", "visit-notes"].includes(s.id)
-      ),
-    },
-  },
-  {
-    kind: "group",
-    group: {
-      label: "예식",
-      icon: "💍",
-      items: ALL_SECTIONS.filter((s) =>
-        ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)
-      ),
-    },
-  },
-  { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
+  { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "wedding-plan")! },
+  // TODO: 부동산/예식 그룹 임시 비활성 (지우지 말 것)
+  // { kind: "group", group: { label: "부동산", icon: "🏠", items: ALL_SECTIONS.filter((s) => ["assets", "housing", "visit-notes"].includes(s.id)) } },
+  // { kind: "group", group: { label: "예식", icon: "💍", items: ALL_SECTIONS.filter((s) => ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)) } },
+  // TODO: 메뉴 관리 탭 임시 비활성 (지우지 말 것)
+  // { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
 ];
 
 /** Section IDs that can never be hidden by the user. */
-const ALWAYS_VISIBLE = new Set(["overview", "menu-settings"]);
+// TODO: 메뉴 관리 탭 임시 비활성 — 복구 시 "menu-settings" 다시 추가
+const ALWAYS_VISIBLE = new Set(["overview"]);
 
 export default function WeddingApp() {
   // Seed `active` from ?section= so shared links deep-link into a
@@ -914,6 +903,7 @@ export default function WeddingApp() {
             <VisitNotesSection complexes={complexes} />
           )}
           {active === "routes" && <RoutesStubSection />}
+          {active === "wedding-plan" && <WeddingPlanSection key="wedding-plan" />}
           {active === "menu-settings" && (
             <MenuManageSection
               sections={ALL_SECTIONS.filter((s) => s.id !== "menu-settings" && s.id !== "overview")}
@@ -1424,6 +1414,7 @@ function RoutesStubSection() {
   );
 }
 
+
 interface CustomSectionProps {
   item: BudgetItem;
 }
@@ -1450,6 +1441,7 @@ function CustomSection({ item }: CustomSectionProps) {
 
 /* ── Mobile bottom nav ─────────────────────── */
 
+// TODO: 임시 비활성 — 복구 시 WEDDING_IDS/HOUSING_IDS 하단 nav에 다시 연결
 const WEDDING_IDS = ["halls", "studios", "dresses", "makeup"];
 const HOUSING_IDS = ["assets", "housing", "visit-notes"];
 
@@ -1467,10 +1459,11 @@ function MobileBottomNav({
   onMenuToggle,
 }: MobileBottomNavProps) {
   const isHome = active === "overview";
+  const isWeddingPlan = active === "wedding-plan";
   const isWedding = WEDDING_IDS.includes(active);
   const isHousing = HOUSING_IDS.includes(active);
   const isMenu =
-    !isHome && !isWedding && !isHousing && active !== "__logo__";
+    !isHome && !isWeddingPlan && !isWedding && !isHousing && active !== "__logo__";
 
   const tabClass = (on: boolean) =>
     "flex flex-col items-center gap-1 flex-1 py-2 transition-colors " +
@@ -1524,32 +1517,21 @@ function MobileBottomNav({
             <span className="text-[9px] font-medium">홈</span>
           </button>
 
-          {/* 예식 */}
+          {/* 웨딩 플랜 */}
           <button
             type="button"
-            onClick={() =>
-              onSelect(isWedding ? active : "halls")
-            }
-            className={tabClass(isWedding)}
+            onClick={() => onSelect("wedding-plan")}
+            className={tabClass(isWeddingPlan)}
           >
-            <TwEmoji emoji="💍" size={20} />
-            <span className="text-[9px] font-medium">예식</span>
+            <TwEmoji emoji="💑" size={20} />
+            <span className="text-[9px] font-medium">웨딩플랜</span>
           </button>
 
           {/* Center spacer */}
           <div className="flex-1 min-w-[64px]" />
 
-          {/* 부동산 */}
-          <button
-            type="button"
-            onClick={() =>
-              onSelect(isHousing ? active : "housing")
-            }
-            className={tabClass(isHousing)}
-          >
-            <TwEmoji emoji="🏠" size={20} />
-            <span className="text-[9px] font-medium">부동산</span>
-          </button>
+          {/* TODO: 부동산/예식 임시 비활성 — 복구 시 버튼 다시 추가 */}
+          <div className="flex-1" />
 
           {/* 메뉴 */}
           <button
@@ -1699,7 +1681,8 @@ function MenuManageSection({
   onToggle,
   onToggleGroup,
 }: MenuManageSectionProps) {
-  const groups = ["부동산", "예식"];
+  // TODO: 부동산/예식 임시 비활성 — 복구 시 ["부동산", "예식"] 로 되돌릴 것
+  const groups: string[] = [];
 
   return (
     <div className="space-y-6">
