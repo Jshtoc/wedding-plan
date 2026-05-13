@@ -125,12 +125,58 @@ export default function WeddingPlanSection() {
   const [tab, setTab] = useState<PlanTab>("checklist");
   const [saved, setSaved] = useState(true);
   const doSaveRef = React.useRef<() => void>(() => {});
+
+  const [checked, setChecked] = useState<Set<string>>(() => {
+    try {
+      const r = typeof window !== "undefined" ? localStorage.getItem(CHECKED_KEY) : null;
+      return r ? new Set(JSON.parse(r) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
   const [details, setDetails] = useState<Record<string, ItemDetail>>(() => {
     try {
       const r = typeof window !== "undefined" ? localStorage.getItem(DETAILS_KEY) : null;
       return r ? (JSON.parse(r) as Record<string, ItemDetail>) : {};
     } catch { return {}; }
   });
+  const [totalBudget, setTotalBudget] = useState<string>(() => {
+    try {
+      return typeof window !== "undefined"
+        ? (localStorage.getItem(TOTAL_BUDGET_KEY) ?? "") : "";
+    } catch { return ""; }
+  });
+
+  // ── 서버 로드 (마운트 시 1회) ──────────────────────────────
+  useEffect(() => {
+    fetch("/api/checklist")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        if (Array.isArray(data.checked)) {
+          localStorage.setItem(CHECKED_KEY, JSON.stringify(data.checked));
+          setChecked(new Set(data.checked as string[]));
+        }
+        if (data.details && typeof data.details === "object") {
+          localStorage.setItem(DETAILS_KEY, JSON.stringify(data.details));
+          setDetails(data.details as Record<string, ItemDetail>);
+        }
+        if (typeof data.totalBudget === "string" && data.totalBudget !== "") {
+          localStorage.setItem(TOTAL_BUDGET_KEY, data.totalBudget);
+          setTotalBudget(data.totalBudget);
+        }
+      })
+      .catch(() => {/* 오프라인이어도 localStorage로 동작 */});
+  }, []);
+
+  // ── localStorage 즉시 동기화 ──────────────────────────────
+  useEffect(() => {
+    localStorage.setItem(CHECKED_KEY, JSON.stringify([...checked]));
+  }, [checked]);
+  useEffect(() => {
+    localStorage.setItem(DETAILS_KEY, JSON.stringify(details));
+  }, [details]);
+  useEffect(() => {
+    localStorage.setItem(TOTAL_BUDGET_KEY, totalBudget);
+  }, [totalBudget]);
 
   const venueBudget = toNum(details["cer-venue"]?.estimated ?? "");
   const mealBudget  = toNum(details["cer-food"]?.estimated  ?? "");
@@ -182,7 +228,12 @@ export default function WeddingPlanSection() {
       </div>
 
       {tab === "checklist" && (
-        <ChecklistTab saved={saved} setSaved={setSaved} doSaveRef={doSaveRef} details={details} setDetails={setDetails} />
+        <ChecklistTab
+          saved={saved} setSaved={setSaved} doSaveRef={doSaveRef}
+          checked={checked} setChecked={setChecked}
+          details={details} setDetails={setDetails}
+          totalBudget={totalBudget} setTotalBudget={setTotalBudget}
+        />
       )}
       {tab === "venues" && <VenueListTab venueBudget={venueBudget} mealBudget={mealBudget} />}
     </div>
@@ -194,27 +245,39 @@ function ChecklistTab({
   saved,
   setSaved,
   doSaveRef,
+  checked,
+  setChecked,
   details,
   setDetails,
+  totalBudget,
+  setTotalBudget,
 }: {
   saved: boolean;
   setSaved: (v: boolean) => void;
   doSaveRef: React.MutableRefObject<() => void>;
+  checked: Set<string>;
+  setChecked: React.Dispatch<React.SetStateAction<Set<string>>>;
   details: Record<string, ItemDetail>;
   setDetails: React.Dispatch<React.SetStateAction<Record<string, ItemDetail>>>;
+  totalBudget: string;
+  setTotalBudget: React.Dispatch<React.SetStateAction<string>>;
 }) {
-  const [checked, setChecked] = useState<Set<string>>(() => {
-    try {
-      const r = typeof window !== "undefined" ? localStorage.getItem(CHECKED_KEY) : null;
-      return r ? new Set(JSON.parse(r) as string[]) : new Set();
-    } catch { return new Set(); }
-  });
-  const [totalBudget, setTotalBudget] = useState<string>(() => {
-    try {
-      return typeof window !== "undefined"
-        ? (localStorage.getItem(TOTAL_BUDGET_KEY) ?? "") : "";
-    } catch { return ""; }
-  });
+  // ── 서버 debounce 동기화 (1.5초 뒤 저장) ─────────────────
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetch("/api/checklist", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checked:     [...checked],
+          details,
+          totalBudget,
+        }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [checked, details, totalBudget]);
+
   /* 진행률 */
   const totalItems = CHECKLIST.reduce((a, c) => a + c.items.length, 0);
   const doneItems  = CHECKLIST.reduce((a, c) => a + c.items.filter((i) => checked.has(i.id)).length, 0);
@@ -244,23 +307,19 @@ function ChecklistTab({
 
   /* 저장 */
   const handleSave = useCallback(() => {
-    localStorage.setItem(CHECKED_KEY,      JSON.stringify([...checked]));
-    localStorage.setItem(DETAILS_KEY,      JSON.stringify(details));
-    localStorage.setItem(TOTAL_BUDGET_KEY, totalBudget);
+    // auto-save가 처리하므로 여기선 UI 상태만 갱신
     setSaved(true);
-  }, [checked, details, totalBudget, setSaved]);
+  }, [setSaved]);
 
   useEffect(() => {
     doSaveRef.current = handleSave;
   }, [handleSave, doSaveRef]);
 
   const toggle = (id: string) => {
-    setSaved(false);
     setChecked((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
   const setDetail = (id: string, field: keyof ItemDetail, raw: string) => {
-    setSaved(false);
     const val = field === "vendor" ? raw : fmtNum(raw);
     setDetails((prev) => ({
       ...prev,

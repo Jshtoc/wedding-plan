@@ -721,3 +721,45 @@ export async function upsertSettings(
     );
   if (error) throw error;
 }
+
+/* ─────────────── Wedding Checklist ─────────────── */
+
+export interface ChecklistData {
+  checked:     string[];
+  details:     Record<string, { vendor: string; estimated: string; confirmed: string }>;
+  totalBudget: string;
+}
+
+export async function getChecklist(groupId: string): Promise<ChecklistData> {
+  const { data, error } = await supabase
+    .from("wedding_checklist")
+    .select("checked, details, total_budget")
+    .eq("group_id", groupId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return { checked: [], details: {}, totalBudget: "" };
+  return {
+    checked:     (data.checked as string[])      ?? [],
+    details:     (data.details as ChecklistData["details"]) ?? {},
+    totalBudget: (data.total_budget as string)   ?? "",
+  };
+}
+
+export async function upsertChecklist(
+  groupId: string,
+  payload: ChecklistData
+): Promise<void> {
+  const { error } = await supabase
+    .from("wedding_checklist")
+    .upsert(
+      {
+        group_id:     groupId,
+        checked:      payload.checked,
+        details:      payload.details,
+        total_budget: payload.totalBudget,
+        updated_at:   new Date().toISOString(),
+      },
+      { onConflict: "group_id" }
+    );
+  if (error) throw error;
+}
