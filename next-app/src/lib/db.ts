@@ -730,14 +730,14 @@ export interface ChecklistData {
   totalBudget: string;
 }
 
-export async function getChecklist(groupId: string): Promise<ChecklistData> {
+export async function getChecklist(groupId: string): Promise<ChecklistData | null> {
   const { data, error } = await supabase
     .from("wedding_checklist")
     .select("checked, details, total_budget")
     .eq("group_id", groupId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return { checked: [], details: {}, totalBudget: "" };
+  if (!data) return null;
   return {
     checked:     (data.checked as string[])      ?? [],
     details:     (data.details as ChecklistData["details"]) ?? {},

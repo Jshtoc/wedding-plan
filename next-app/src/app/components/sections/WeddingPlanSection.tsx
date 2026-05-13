@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { VENUES, type Venue } from "@/data/weddingPlan";
 import TwEmoji from "../ui/TwEmoji";
+import { useAlert } from "../ui/ConfirmModal";
 
 type PlanTab = "checklist" | "venues";
 
@@ -262,17 +263,15 @@ function ChecklistTab({
   totalBudget: string;
   setTotalBudget: React.Dispatch<React.SetStateAction<string>>;
 }) {
+  const showAlert = useAlert();
+
   // ── 서버 debounce 동기화 (1.5초 뒤 저장) ─────────────────
   useEffect(() => {
     const t = setTimeout(() => {
       fetch("/api/checklist", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          checked:     [...checked],
-          details,
-          totalBudget,
-        }),
+        body: JSON.stringify({ checked: [...checked], details, totalBudget }),
       }).catch(() => {});
     }, 1500);
     return () => clearTimeout(t);
@@ -306,10 +305,23 @@ function ChecklistTab({
   [catTotals]);
 
   /* 저장 */
-  const handleSave = useCallback(() => {
-    // auto-save가 처리하므로 여기선 UI 상태만 갱신
-    setSaved(true);
-  }, [setSaved]);
+  const handleSave = useCallback(async () => {
+    try {
+      const res = await fetch("/api/checklist", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checked: [...checked], details, totalBudget }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        await showAlert("저장 완료되었습니다.", { title: "완료", icon: "✅" });
+      } else {
+        await showAlert("저장에 실패했습니다.", { title: "오류", icon: "⚠️" });
+      }
+    } catch {
+      await showAlert("네트워크 오류가 발생했습니다.", { title: "오류", icon: "⚠️" });
+    }
+  }, [checked, details, totalBudget, setSaved, showAlert]);
 
   useEffect(() => {
     doSaveRef.current = handleSave;
