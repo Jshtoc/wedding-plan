@@ -1517,6 +1517,9 @@ function MobileBottomNav({
             <span className="text-[9px] font-medium">홈</span>
           </button>
 
+          {/* Center spacer (로고 공간) */}
+          <div className="flex-1 min-w-[64px]" />
+
           {/* 웨딩 플랜 */}
           <button
             type="button"
@@ -1525,34 +1528,6 @@ function MobileBottomNav({
           >
             <TwEmoji emoji="💑" size={20} />
             <span className="text-[9px] font-medium">웨딩플랜</span>
-          </button>
-
-          {/* Center spacer */}
-          <div className="flex-1 min-w-[64px]" />
-
-          {/* TODO: 부동산/예식 임시 비활성 — 복구 시 버튼 다시 추가 */}
-          <div className="flex-1" />
-
-          {/* 메뉴 */}
-          <button
-            type="button"
-            onClick={onMenuToggle}
-            className={tabClass(isMenu || menuOpen)}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="4" y1="12" x2="20" y2="12" />
-              <line x1="4" y1="18" x2="20" y2="18" />
-            </svg>
-            <span className="text-[9px] font-medium">메뉴</span>
           </button>
         </div>
       </div>
