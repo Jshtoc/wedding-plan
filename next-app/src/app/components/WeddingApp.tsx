@@ -1502,7 +1502,7 @@ function MobileBottomNav({
 
         {/* Nav bar */}
         <div className="flex items-end bg-[#020806]/95 backdrop-blur-xl border-t border-white/10 px-2 pt-2 pb-1">
-          {/* 홈 */}
+          {/* 왼쪽: 홈 + 웨딩플랜 */}
           <button
             type="button"
             onClick={() => onSelect("overview")}
@@ -1519,17 +1519,11 @@ function MobileBottomNav({
               strokeLinejoin="round"
             >
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              {!isHome && (
-                <polyline points="9 22 9 12 15 12 15 22" />
-              )}
+              {!isHome && <polyline points="9 22 9 12 15 12 15 22" />}
             </svg>
             <span className="text-[9px] font-medium">홈</span>
           </button>
 
-          {/* Center spacer (로고 공간) */}
-          <div className="flex-1 min-w-[64px]" />
-
-          {/* 웨딩 플랜 */}
           <button
             type="button"
             onClick={() => onSelect("wedding-plan")}
@@ -1539,17 +1533,19 @@ function MobileBottomNav({
             <span className="text-[9px] font-medium">웨딩플랜</span>
           </button>
 
-          {/* 홀 리스트 */}
+          {/* Center spacer (로고 공간 — 클릭 영역 없음) */}
+          <div className="w-[72px] flex-shrink-0" />
+
+          {/* 오른쪽: 홀리스트 + 더보기 */}
           <button
             type="button"
             onClick={() => onSelect("fair-halls")}
-            className={tabClass(active === "fair-halls")}
+            className={tabClass(isFairHalls)}
           >
             <TwEmoji emoji="🏛️" size={20} />
             <span className="text-[9px] font-medium">홀리스트</span>
           </button>
 
-          {/* 더보기 */}
           <button
             type="button"
             onClick={onMenuToggle}
