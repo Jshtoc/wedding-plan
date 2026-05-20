@@ -1470,8 +1470,9 @@ function MobileBottomNav({
   const isWeddingPlan = active === "wedding-plan";
   const isWedding = WEDDING_IDS.includes(active);
   const isHousing = HOUSING_IDS.includes(active);
+  const isFairHalls = active === "fair-halls";
   const isMenu =
-    !isHome && !isWeddingPlan && !isWedding && !isHousing && active !== "__logo__";
+    !isHome && !isWeddingPlan && !isWedding && !isHousing && !isFairHalls && active !== "__logo__";
 
   const tabClass = (on: boolean) =>
     "flex flex-col items-center gap-1 flex-1 py-2 transition-colors " +
@@ -1538,17 +1539,29 @@ function MobileBottomNav({
             <span className="text-[9px] font-medium">웨딩플랜</span>
           </button>
 
-          {/* 로그아웃 */}
+          {/* 홀 리스트 */}
           <button
             type="button"
-            onClick={onLogout}
-            className="flex flex-col items-center gap-1 py-2 px-3 text-white/30 active:text-white/60 transition-colors"
-            aria-label="로그아웃"
+            onClick={() => onSelect("fair-halls")}
+            className={tabClass(active === "fair-halls")}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 16l4-4m0 0l-4-4m4 4H9m4 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            <TwEmoji emoji="🏛️" size={20} />
+            <span className="text-[9px] font-medium">홀리스트</span>
+          </button>
+
+          {/* 더보기 */}
+          <button
+            type="button"
+            onClick={onMenuToggle}
+            className={tabClass(menuOpen)}
+            aria-label="더보기"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="5" r="1" fill="currentColor" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
+              <circle cx="12" cy="19" r="1" fill="currentColor" />
             </svg>
-            <span className="text-[9px] font-medium">로그아웃</span>
+            <span className="text-[9px] font-medium">더보기</span>
           </button>
         </div>
       </div>
