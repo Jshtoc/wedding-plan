@@ -35,6 +35,7 @@ import { API_ERROR_EVENT } from "@/lib/apiFetch";
 import OverviewSection from "./sections/OverviewSection";
 import BudgetSection from "./sections/BudgetSection";
 import WeddingPlanSection from "./sections/WeddingPlanSection";
+import FairHallsSection from "./sections/FairHallsSection";
 
 /**
  * Active section id. Fixed ids are the 7 built-in menu items; any
@@ -52,6 +53,7 @@ type FixedSection =
   | "budget"
   | "routes"
   | "wedding-plan"
+  | "fair-halls"
   | "menu-settings";
 type Section = FixedSection | string;
 type SortType = "default" | "price" | "guests" | "parking";
@@ -86,6 +88,7 @@ const ALL_SECTIONS: SectionDef[] = [
   { id: "budget", label: "결혼 예산", icon: "💰", subtitle: "항목별 예산 배분 및 관리" },
   { id: "routes", label: "동선", icon: "🗺️", subtitle: "하루 투어 동선 계산" },
   { id: "wedding-plan", label: "웨딩 플랜", icon: "💑", subtitle: "웨딩 준비 전체 플랜" },
+  { id: "fair-halls", label: "홀 리스트", icon: "🏛️", subtitle: "웨딩박람회 추천 홀 21곳" },
   { id: "menu-settings", label: "메뉴 관리", icon: "⚙️", subtitle: "노출 메뉴 on/off 설정" },
 ];
 
@@ -93,6 +96,7 @@ const ALL_SECTIONS: SectionDef[] = [
 const SIDEBAR_NAV: SidebarEntry[] = [
   { kind: "item", item: ALL_SECTIONS[0] }, // 대시보드
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "wedding-plan")! },
+  { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "fair-halls")! },
   // TODO: 부동산/예식 그룹 임시 비활성 (지우지 말 것)
   // { kind: "group", group: { label: "부동산", icon: "🏠", items: ALL_SECTIONS.filter((s) => ["assets", "housing", "visit-notes"].includes(s.id)) } },
   // { kind: "group", group: { label: "예식", icon: "💍", items: ALL_SECTIONS.filter((s) => ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)) } },
@@ -905,6 +909,7 @@ export default function WeddingApp() {
           )}
           {active === "routes" && <RoutesStubSection />}
           {active === "wedding-plan" && <WeddingPlanSection key="wedding-plan" />}
+          {active === "fair-halls" && <FairHallsSection />}
           {active === "menu-settings" && (
             <MenuManageSection
               sections={ALL_SECTIONS.filter((s) => s.id !== "menu-settings" && s.id !== "overview")}
