@@ -81,7 +81,6 @@ const ALL_SECTIONS: SectionDef[] = [
   { id: "assets", label: "자산", icon: "💎", subtitle: "자산 현황 및 자금 계획" },
   { id: "housing", label: "매물", icon: "🏠", subtitle: "신혼집 매물 비교 및 정리" },
   { id: "visit-notes", label: "임장 메모", icon: "📝", subtitle: "현장 방문 사진 · 장단점 · 메모" },
-  { id: "halls", label: "웨딩홀", icon: "💒", subtitle: "예식장 비교 및 견적" },
   { id: "studios", label: "스튜디오", icon: "📸", subtitle: "촬영 스튜디오 리스트" },
   { id: "dresses", label: "드레스 & 예복", icon: "👰", subtitle: "신랑 · 신부 의상" },
   { id: "makeup", label: "메이크업", icon: "💄", subtitle: "메이크업 샵 리스트" },
@@ -98,7 +97,7 @@ const SIDEBAR_NAV: SidebarEntry[] = [
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "wedding-plan")! },
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "fair-halls")! },
   { kind: "group", group: { label: "부동산", icon: "🏠", items: ALL_SECTIONS.filter((s) => ["assets", "housing", "visit-notes"].includes(s.id)) } },
-  { kind: "group", group: { label: "예식", icon: "💍", items: ALL_SECTIONS.filter((s) => ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)) } },
+  { kind: "group", group: { label: "예식", icon: "💍", items: ALL_SECTIONS.filter((s) => ["studios", "dresses", "makeup", "budget", "routes"].includes(s.id)) } },
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
 ];
 
