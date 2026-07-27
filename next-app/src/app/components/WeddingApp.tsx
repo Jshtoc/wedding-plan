@@ -97,16 +97,13 @@ const SIDEBAR_NAV: SidebarEntry[] = [
   { kind: "item", item: ALL_SECTIONS[0] }, // 대시보드
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "wedding-plan")! },
   { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "fair-halls")! },
-  // TODO: 부동산/예식 그룹 임시 비활성 (지우지 말 것)
-  // { kind: "group", group: { label: "부동산", icon: "🏠", items: ALL_SECTIONS.filter((s) => ["assets", "housing", "visit-notes"].includes(s.id)) } },
-  // { kind: "group", group: { label: "예식", icon: "💍", items: ALL_SECTIONS.filter((s) => ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)) } },
-  // TODO: 메뉴 관리 탭 임시 비활성 (지우지 말 것)
-  // { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
+  { kind: "group", group: { label: "부동산", icon: "🏠", items: ALL_SECTIONS.filter((s) => ["assets", "housing", "visit-notes"].includes(s.id)) } },
+  { kind: "group", group: { label: "예식", icon: "💍", items: ALL_SECTIONS.filter((s) => ["halls", "studios", "dresses", "makeup", "budget", "routes"].includes(s.id)) } },
+  { kind: "item", item: ALL_SECTIONS.find((s) => s.id === "menu-settings")! },
 ];
 
 /** Section IDs that can never be hidden by the user. */
-// TODO: 메뉴 관리 탭 임시 비활성 — 복구 시 "menu-settings" 다시 추가
-const ALWAYS_VISIBLE = new Set(["overview"]);
+const ALWAYS_VISIBLE = new Set(["overview", "menu-settings"]);
 
 export default function WeddingApp() {
   // Seed `active` from ?section= so shared links deep-link into a
@@ -1686,8 +1683,7 @@ function MenuManageSection({
   onToggle,
   onToggleGroup,
 }: MenuManageSectionProps) {
-  // TODO: 부동산/예식 임시 비활성 — 복구 시 ["부동산", "예식"] 로 되돌릴 것
-  const groups: string[] = [];
+  const groups: string[] = ["부동산", "예식"];
 
   return (
     <div className="space-y-6">
